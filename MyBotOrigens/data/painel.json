@@ -1,0 +1,13 @@
+{
+  "botAtivo": false,
+  "diasFuncionamento": {
+    "domingo": false,
+    "segunda": false,
+    "terca": false,
+    "quarta": false,
+    "quinta": false,
+    "sexta": false,
+    "sabado": false
+  },
+  "atualizadoEm": null
+}
