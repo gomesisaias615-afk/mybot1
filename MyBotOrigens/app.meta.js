@@ -40,6 +40,8 @@ app.use(express.json({
 
 const mensagensProcessadas = new Map();
 const filasAtendimento = new Map();
+// Evita repetir o aviso de indisponibilidade para o mesmo cliente.
+const clientesAvisadosIndisponibilidade = new Set();
 
 async function processarMensagem(msg) {
   if (!msg?.body?.trim()) return;
@@ -54,6 +56,11 @@ async function processarMensagem(msg) {
   if (await processarRespostaConviteGrupo(msg)) return;
   if (!botDeveFuncionarHoje()) {
     resetarUsuario(msg.from);
+    if (clientesAvisadosIndisponibilidade.has(msg.from)) {
+      console.log(`[META] Aviso de indisponibilidade já enviado para ${msg.from}.`);
+      return;
+    }
+    clientesAvisadosIndisponibilidade.add(msg.from);
     const horario = obterHorarioConfigurado();
     const configuracao = obterConfiguracaoPainel();
     const nomesDias = { domingo: "domingo", segunda: "segunda-feira", terca: "terça-feira", quarta: "quarta-feira", quinta: "quinta-feira", sexta: "sexta-feira", sabado: "sábado" };
@@ -69,6 +76,8 @@ async function processarMensagem(msg) {
     console.log(`[META] Mensagem de horário enviada para ${msg.from}.`);
     return;
   }
+  // Ao voltar a funcionar, este cliente pode receber avisos futuros se a loja fechar novamente.
+  clientesAvisadosIndisponibilidade.delete(msg.from);
   try { await atendimento(msg, clientMeta); } finally { salvarContexto(); }
 }
 
@@ -152,6 +161,10 @@ const monitorFuncionamento = setInterval(() => {
   if (funcionamentoAnterior && !funcionandoAgora) {
     const total = resetarTodosUsuarios();
     console.log(`[META] Horário encerrado. ${total} sessão(ões) de atendimento reiniciada(s).`);
+  }
+  if (!funcionamentoAnterior && funcionandoAgora) {
+    clientesAvisadosIndisponibilidade.clear();
+    console.log("[META] Atendimento reaberto; avisos de indisponibilidade liberados.");
   }
   funcionamentoAnterior = funcionandoAgora;
 }, 30 * 1000);
