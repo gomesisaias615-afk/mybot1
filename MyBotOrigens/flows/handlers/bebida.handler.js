@@ -77,7 +77,7 @@ async function tratarBebida({ msg, user, contexto, estoque }) {
     }
 
     for (const item of interpretacao.itens) {
-      if (Number(estoque.bebidas[item.chave] || 0) <= 0) {
+      if (Object.prototype.hasOwnProperty.call(estoque.bebidas || {}, item.chave) && Number(estoque.bebidas[item.chave]) <= 0) {
         await msg.reply(
           `❌ *A bebida ${item.nome} está indisponível no momento.*\n\nEscolha outra bebida disponível no Cardápio Digital.`
         );

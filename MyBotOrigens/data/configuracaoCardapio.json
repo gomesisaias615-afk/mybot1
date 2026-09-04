@@ -1,8 +1,8 @@
 {
   "pizzaria": {
-    "nome": "Nova pizzaria",
-    "nomeCurto": "",
-    "slogan": ""
+    "nome": "Pizzaria FinalBoss",
+    "nomeCurto": "FinalBoss",
+    "slogan": "Pizzas especiais"
   },
   "categorias": {
     "tradicionais": true,
@@ -11,8 +11,8 @@
     "bebidas": true
   },
   "pizzasPorCategoria": {
-    "tradicionais": [],
-    "especiais": [],
+    "tradicionais": ["Calabresa", "Portuguesa", "Mussarela"],
+    "especiais": ["Frango Catupiry", "Quatro Queijos", "Pepperoni"],
     "doces": []
   },
   "promocoes": {

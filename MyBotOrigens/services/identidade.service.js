@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { garantirArquivo, diretorioDados } = require("./dadosPersistentes.service");
 
-const arquivo = garantirArquivo("identidade.json", null, {});
+const arquivo = garantirArquivo("identidade.json", "data/identidade.json", {});
 const logo = path.join(diretorioDados, "identidade-logo.png");
 const padrao = {
   nome: "Nova pizzaria",

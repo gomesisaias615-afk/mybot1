@@ -8,7 +8,7 @@ const pastaBot = process.env.BOT1_PATH || path.resolve(__dirname, "..");
 const { garantirArquivo } = require("../services/dadosPersistentes.service");
 const configuracaoCardapioPath = garantirArquivo("configuracaoCardapio.json", "data/configuracaoCardapio.json", {});
 const precosService = require("../services/precos.service");
-const { estoque, recarregarEstoque } = require("../services/estoque.service");
+const { estoque, recarregarEstoque, produtoDisponivel } = require("../services/estoque.service");
 const imagensProdutos = require("../services/imagemProduto.service");
 
 function lerJson(caminho, padrao) {
@@ -110,8 +110,8 @@ function montarCardapio() {
       categoria: categoriaConfigurada || detalhes.categoria,
       ingredientes: catalogoPrecos.ingredientesPizzas?.[nome] || detalhes.ingredientes,
       imagem: imagensProdutos.urlImagem("pizzas", nome),
-      estoque: Number(estoqueAtual.pizzas?.[chave] || 0),
-      disponivel: Number(estoqueAtual.pizzas?.[chave] || 0) > 0,
+      estoque: Object.prototype.hasOwnProperty.call(estoqueAtual.pizzas || {}, chave) ? Number(estoqueAtual.pizzas[chave]) : null,
+      disponivel: produtoDisponivel("pizzas", chave),
       promocao: promocoesPizzas.has(chave) || Object.values(catalogoPrecos.promocoes.pizzas?.[nome] || {}).some(precosService.ativa),
       promocoes: Object.fromEntries(Object.keys(tamanhos || {}).map(tamanho => [tamanho, precosService.ativa(catalogoPrecos.promocoes.pizzas?.[nome]?.[tamanho]) ? catalogoPrecos.promocoes.pizzas[nome][tamanho] : null])),
       precos: Object.fromEntries(Object.entries(tamanhos || {}).map(([tamanho, valor]) => [tamanho, precosService.ativa(catalogoPrecos.promocoes.pizzas?.[nome]?.[tamanho]) ? Number(catalogoPrecos.promocoes.pizzas[nome][tamanho].por) : Number(valor)]))
@@ -125,8 +125,8 @@ function montarCardapio() {
     categoria: "bebidas",
     ingredientes: "Bebida gelada para acompanhar seu pedido.",
     imagem: imagensProdutos.urlImagem("bebidas", chave),
-    estoque: Number(estoqueAtual.bebidas?.[chave] || 0),
-    disponivel: Number(estoqueAtual.bebidas?.[chave] || 0) > 0,
+    estoque: Object.prototype.hasOwnProperty.call(estoqueAtual.bebidas || {}, chave) ? Number(estoqueAtual.bebidas[chave]) : null,
+    disponivel: produtoDisponivel("bebidas", chave),
     promocao: promocoesBebidas.has(chave) || precosService.ativa(catalogoPrecos.promocoes.bebidas?.[chave]),
     promocaoDetalhe: precosService.ativa(catalogoPrecos.promocoes.bebidas?.[chave]) ? catalogoPrecos.promocoes.bebidas[chave] : null,
     preco: precosService.ativa(catalogoPrecos.promocoes.bebidas?.[chave]) ? Number(catalogoPrecos.promocoes.bebidas[chave].por) : Number(precosBebidas[chave] || 0)

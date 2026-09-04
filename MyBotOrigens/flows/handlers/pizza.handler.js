@@ -78,7 +78,7 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
     for (const item of interpretacao.itens) {
       for (const sabor of item.sabores) {
         const chave = normalizar(sabor);
-        if (Number(estoque.pizzas[chave] || 0) <= 0) {
+        if (Object.prototype.hasOwnProperty.call(estoque.pizzas || {}, chave) && Number(estoque.pizzas[chave]) <= 0) {
           await msg.reply(formatarRespostaIa(
             `❌ *A pizza ${sabor} está indisponível no momento.*\n\nEscolha outro sabor disponível no Cardápio Digital.`
           ));
@@ -88,7 +88,7 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
     }
 
     for (const bebida of interpretacaoBebidas.itens) {
-      if (Number(estoque.bebidas[bebida.chave] || 0) <= 0) {
+      if (Object.prototype.hasOwnProperty.call(estoque.bebidas || {}, bebida.chave) && Number(estoque.bebidas[bebida.chave]) <= 0) {
         await msg.reply(formatarRespostaIa(
           `❌ *A bebida ${bebida.nome} está indisponível no momento.*\n\nEscolha outra bebida disponível no Cardápio Digital.`
         ));

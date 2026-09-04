@@ -34,6 +34,13 @@ function normalizar(valor) {
     .trim();
 }
 
+// Sem registro de estoque, o produto continua vendável. Um registro explícito
+// com zero é o que o torna indisponível no bot e no cardápio.
+function produtoDisponivel(tipo, chave) {
+  const itens = estoque[tipo] || {};
+  return !Object.prototype.hasOwnProperty.call(itens, chave) || Number(itens[chave]) > 0;
+}
+
 function zerarProduto(nomeInformado) {
   const dados = JSON.parse(fs.readFileSync(estoquePath, "utf8"));
   dados.pizzas = dados.pizzas || {};
@@ -95,6 +102,7 @@ module.exports = {
   recarregarEstoque,
   zerarProduto,
   atualizarProdutos,
-  definirQuantidadeProduto
+  definirQuantidadeProduto,
+  produtoDisponivel
 };
 

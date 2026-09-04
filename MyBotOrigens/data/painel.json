@@ -1,13 +1,24 @@
 {
-  "botAtivo": false,
+  "botAtivo": true,
+  "horarioAbertura": "18:00",
+  "horarioFechamento": "22:00",
   "diasFuncionamento": {
-    "domingo": false,
-    "segunda": false,
-    "terca": false,
-    "quarta": false,
-    "quinta": false,
-    "sexta": false,
-    "sabado": false
+    "domingo": true,
+    "segunda": true,
+    "terca": true,
+    "quarta": true,
+    "quinta": true,
+    "sexta": true,
+    "sabado": true
+  },
+  "entrega": {
+    "modoTaxa": "por_km",
+    "taxaFixa": 0,
+    "valorPorKm": 1,
+    "taxaMinima": 2,
+    "enderecoPizzaria": "Rua Pedro Homem da Costa, 596 - Centro, Estância - SE, CEP 49200-000",
+    "latitudePizzaria": null,
+    "longitudePizzaria": null
   },
   "atualizadoEm": null
 }

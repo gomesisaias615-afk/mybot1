@@ -49,8 +49,8 @@ async function finalizarPedido({
 
   for (const pizza of pizzas) {
     for (const sabor of pizza.sabores || [pizza.sabor]) {
-      const disponivel = estoque.pizzas[normalizar(sabor)] || 0;
-      if (disponivel <= 0) {
+      const chave = normalizar(sabor);
+      if (Object.prototype.hasOwnProperty.call(estoque.pizzas || {}, chave) && Number(estoque.pizzas[chave]) <= 0) {
         resetarUsuario(user);
         await msg.reply(
           `❌ *Não foi possível finalizar: ${sabor} está indisponível.*\n\nEscolha outro sabor pelo Cardápio Digital.`
@@ -62,9 +62,7 @@ async function finalizarPedido({
   }
 
   for (const bebida of bebidas) {
-    const disponivel = estoque.bebidas[bebida.chave] || 0;
-
-    if (disponivel <= 0) {
+    if (Object.prototype.hasOwnProperty.call(estoque.bebidas || {}, bebida.chave) && Number(estoque.bebidas[bebida.chave]) <= 0) {
       resetarUsuario(user);
       await msg.reply(
         `❌ *Não foi possível finalizar: ${bebida.nome} está indisponível.*\n\nEscolha outra bebida pelo Cardápio Digital.`
