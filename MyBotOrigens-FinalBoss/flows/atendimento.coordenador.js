@@ -10,7 +10,8 @@ const {
 const { normalizar } = require("../utils/texto");
 const {
   mostrarMenu: mostrarMenuBase,
-  tratarMenu
+  tratarMenu,
+  tratarAtalhoMenu
 } = require("./handlers/menu.handler");
 const { tratarPizza } = require("./handlers/pizza.handler");
 const { tratarObservacaoPizza } = require("./handlers/observacaoPizza.handler");
@@ -55,21 +56,35 @@ async function atendimento(msg, client) {
   const texto = normalizar(msg.body);
   const estadoAtual = contexto.estados[user];
 
+  // "menu" sempre vence qualquer outro fluxo, inclusive pedido, endereço e pagamento.
+  if (texto === "menu") {
+    resetarUsuario(user);
+    await mostrarMenu(msg, user);
+    return;
+  }
+
   if (estadoAtual === "aguardando_atendente") {
-    if (texto === "menu") {
-      resetarUsuario(user);
-      await mostrarMenu(msg, user);
-    } else {
-      await msg.reply(
-        "👩‍💼 Sua solicitação já foi encaminhada para a atendente. " +
-        "Aguarde a resposta ou envie *menu* para voltar ao atendimento automático."
-      );
-    }
+    await msg.reply("👩‍💼 Aguarde a resposta da atendente ou envie *menu* para voltar ao atendimento automático.");
     return;
   }
 
   const aguardandoTextoLivre = ESTADOS_TEXTO_LIVRE.has(estadoAtual);
   const respostaPorBotao = Boolean(msg._data?.isButtonResponse);
+
+  const parametros = {
+    msg,
+    client,
+    user,
+    contexto,
+    estoque,
+    recarregarEstoque,
+    resetarUsuario,
+    mostrarMenu
+  };
+
+  // Textos/IDs dos quatro botões do menu têm prioridade sobre o cardápio.
+  // Isso impede que "Instagram" ou "Promoções" seja tratado como produto.
+  if (await tratarAtalhoMenu(parametros)) return;
 
   if (!aguardandoTextoLivre && await tratarComandoGlobal(msg, client, user, texto)) {
     return;
@@ -85,17 +100,6 @@ async function atendimento(msg, client) {
     await mostrarMenu(msg, user);
     return;
   }
-
-  const parametros = {
-    msg,
-    client,
-    user,
-    contexto,
-    estoque,
-    recarregarEstoque,
-    resetarUsuario,
-    mostrarMenu
-  };
 
   if (await tratarMenu(parametros)) return;
   if (await tratarPizza(parametros)) return;

@@ -11,21 +11,37 @@ async function mostrarMenu(msg, user, contexto) {
     : msg.reply(textos.menuInicial));
 }
 
-async function tratarMenu({
+function identificarOpcaoMenu(msg, permitirNumeros = false) {
+  // Na Cloud API o id do botão é mais confiável do que o título exibido.
+  // No WhatsApp Web/Baileys recebemos o próprio texto do botão.
+  const idBotao = String(msg._data?.buttonId || "")
+    .replace(/^menu_/, "")
+    .replace(/_/g, " ");
+  const texto = normalizar(idBotao || msg.body)
+    .replace(/^[^a-z0-9]+/i, "");
+
+  if (["fazer pedido", "pedido"].includes(texto)) return "pedido";
+  if (["instagram", "instagram da pizzaria"].includes(texto)) return "instagram";
+  if (["promocoes", "promocao", "grupo de promocoes"].includes(texto)) return "promocoes";
+  if (["mybot", "contato mybot", "entrar em contato com a mybot"].includes(texto)) return "contato";
+
+  if (permitirNumeros) {
+    return ({ "1": "pedido", "2": "instagram", "3": "promocoes", "4": "contato" })[texto] || null;
+  }
+  return null;
+}
+
+async function executarOpcaoMenu({
   msg,
   user,
   contexto,
   estoque,
-  recarregarEstoque,
-  client
-}) {
-  if (contexto.estados[user] !== "menu") {
-    return false;
-  }
+  recarregarEstoque
+}, permitirNumeros = false) {
+  const opcao = identificarOpcaoMenu(msg, permitirNumeros);
+  if (!opcao) return false;
 
-  const texto = normalizar(msg.body);
-
-  if (["1", "fazer pedido", "pedido"].includes(texto)) {
+  if (opcao === "pedido") {
     recarregarEstoque();
     contexto.estados[user] = "pedido_pizza";
     await msg.reply(textos.comoPedirPizza);
@@ -33,51 +49,52 @@ async function tratarMenu({
     return true;
   }
 
-  if (temInstagram && ["instagram", "instagram da pizzaria"].includes(texto)) {
+  if (opcao === "instagram") {
+    if (!temInstagram) {
+      await msg.reply("📸 O Instagram da pizzaria ainda não foi configurado.");
+      return true;
+    }
     await msg.reply(textos.instagram, undefined, { linkPreview: true });
     return true;
   }
 
-  if (temGrupoPromocoes && ["promocoes", "promocao", "grupo de promocoes"].includes(texto)) {
+  if (opcao === "promocoes") {
+    if (!temGrupoPromocoes) {
+      await msg.reply("📢 O grupo de promoções ainda não foi configurado.");
+      return true;
+    }
     await msg.reply(textos.grupoPromocoes, undefined, { linkPreview: true });
     return true;
   }
 
-  if (["atendente", "falar com atendente", "fala com atendente"].includes(texto)) {
-    contexto.estados[user] = "aguardando_atendente";
-    salvarContexto();
-    const numeroAtendente = String(process.env.ATENDENTE_WHATSAPP || "").replace(/\D/g, "");
-    if (numeroAtendente && client?.sendMessage) {
-      try {
-        const contatoCliente = String(user || "").replace(/@.*$/, "");
-        await client.sendMessage(
-          numeroAtendente,
-          `🔔 *Solicitação de atendimento humano*\n\nCliente: ${contatoCliente}\nO cliente está aguardando atendimento no WhatsApp.`
-        );
-      } catch (erro) {
-        console.error("Não foi possível avisar a atendente:", erro.message);
-      }
-    }
-    await msg.reply(
-      "👩‍💼 *Atendimento humano solicitado.*\n\n" +
-      "A atendente foi avisada e responderá assim que possível.\n" +
-      "Se quiser voltar ao atendimento automático, envie *menu*."
-    );
-    return true;
-  }
-
-  if (["mybot", "contato mybot", "entrar em contato com a mybot"].includes(texto)) {
+  if (opcao === "contato") {
     await msg.reply(textos.contatoMyBot, undefined, { linkPreview: true });
     return true;
   }
 
-  await msg.reply(textos.menuErro);
-  await mostrarMenu(msg, user, contexto);
+  return false;
+}
+
+async function tratarMenu(parametros) {
+  if (parametros.contexto.estados[parametros.user] !== "menu") return false;
+
+  const tratado = await executarOpcaoMenu(parametros, true);
+  if (tratado) return true;
+
+  await parametros.msg.reply(textos.menuErro);
+  await mostrarMenu(parametros.msg, parametros.user, parametros.contexto);
   return true;
+}
+
+// Atalhos do menu são globais, mas os números continuam exclusivos do menu.
+// Assim "1 pizza" não é confundido com a opção "Fazer pedido" durante um pedido.
+async function tratarAtalhoMenu(parametros) {
+  return executarOpcaoMenu(parametros, false);
 }
 
 module.exports = {
   mostrarMenu,
-  tratarMenu
+  tratarMenu,
+  tratarAtalhoMenu
 };
 

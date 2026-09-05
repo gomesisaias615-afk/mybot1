@@ -16,17 +16,28 @@ module.exports = {
   // ================================
 
   menuInicial:
-`🍕 *${nomePizzaria.toUpperCase()}*
+`🍕 *${nomePizzaria.toUpperCase()}* 🍕
 
-Olá! Eu sou o assistente virtual da pizzaria.
+Olá! 👋
+
+Seja bem-vindo(a) à *${nomePizzaria}*!
+
+🤖 *Eu sou o assistente virtual da pizzaria*
+e vou te atender por aqui.
+
+🍕 *Vou te ajudar a fazer seu pedido*
+de forma rápida e simples.
+
+❤️ *Vamos começar?*
 
 Escolha uma opção:
 
-🍕 *Fazer pedido*${temInstagram ? "\n📸 *Instagram*" : ""}${temGrupoPromocoes ? "\n📢 *Promoções*" : ""}
-👩‍💼 *Falar com atendente*
-✉️ *Contato MyBot*
+1️⃣ *Fazer pedido*
+2️⃣ *Instagram*
+3️⃣ *Promoções*
+4️⃣ *Contato MyBot*
 
-Toque em uma opção ou digite o nome dela.`,
+Digite o número ou toque em uma opção.`,
 
   localizacao:
 `📍 Nossa localização...`,

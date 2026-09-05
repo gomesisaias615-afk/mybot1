@@ -54,13 +54,10 @@ async function enviarBotoes(destinatario, texto, botoes = []) {
 }
 
 async function enviarMenu(destinatario, texto) {
-  const instagram = /^https?:\/\//i.test(String(process.env.INSTAGRAM_URL || "").trim());
-  const grupoPromocoes = /^https?:\/\//i.test(String(process.env.WHATSAPP_GROUP_URL || "").trim());
   const opcoes = [
     { id: "menu_fazer_pedido", title: "🍕 Fazer pedido", description: "Veja o cardápio e monte seu pedido" },
-    ...(instagram ? [{ id: "menu_instagram", title: "📸 Instagram", description: "Acompanhe a pizzaria" }] : []),
-    ...(grupoPromocoes ? [{ id: "menu_promocoes", title: "📢 Promoções", description: "Entre no grupo oficial" }] : []),
-    { id: "menu_atendente", title: "👩‍💼 Atendente", description: "Solicite atendimento humano" },
+    { id: "menu_instagram", title: "📸 Instagram", description: "Acompanhe a pizzaria" },
+    { id: "menu_promocoes", title: "📢 Promoções", description: "Ofertas e novidades" },
     { id: "menu_contato_mybot", title: "✉️ Contato MyBot", description: "Fale com a equipe do sistema" }
   ];
   return requisitarMeta({
@@ -165,7 +162,7 @@ function textoDaMensagem(mensagem) {
   if (mensagem.type === "button") return mensagem.button?.text || mensagem.button?.payload || "";
   if (mensagem.type === "interactive") {
     const resposta = mensagem.interactive?.button_reply || mensagem.interactive?.list_reply;
-    const mapa = { menu_fazer_pedido: "fazer pedido", menu_instagram: "instagram", menu_promocoes: "promocoes", menu_atendente: "atendente", menu_contato_mybot: "contato mybot", opcao_sim: "1", opcao_nao: "2", opcao_pix: "1", opcao_cartao: "2" };
+    const mapa = { menu_fazer_pedido: "fazer pedido", menu_instagram: "instagram", menu_promocoes: "promocoes", menu_contato_mybot: "contato mybot", opcao_sim: "1", opcao_nao: "2", opcao_pix: "1", opcao_cartao: "2" };
     return mapa[resposta?.id] || resposta?.title || "";
   }
   return "";
@@ -193,6 +190,5 @@ function extrairMensagens(body) {
 }
 
 module.exports = { clientMeta, extrairMensagens, validarAssinatura, validarConfiguracao, verificarWebhook };
-
 
 
