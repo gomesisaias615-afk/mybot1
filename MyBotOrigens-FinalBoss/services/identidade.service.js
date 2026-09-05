@@ -3,6 +3,7 @@ const path = require("path");
 const { garantirArquivo, diretorioDados } = require("./dadosPersistentes.service");
 
 const arquivo = garantirArquivo("identidade.json", "data/identidade.json", {});
+const identidadeInicialPath = path.join(__dirname, "..", "data", "identidade.json");
 const logo = path.join(diretorioDados, "identidade-logo.png");
 const padrao = {
   nome: "Nova pizzaria",
@@ -18,6 +19,15 @@ const padrao = {
 function lerIdentidade() {
   try {
     const dados = JSON.parse(fs.readFileSync(arquivo, "utf8"));
+    return dados && typeof dados === "object" && !Array.isArray(dados) ? dados : {};
+  } catch {
+    return {};
+  }
+}
+
+function lerIdentidadeInicial() {
+  try {
+    const dados = JSON.parse(fs.readFileSync(identidadeInicialPath, "utf8"));
     return dados && typeof dados === "object" && !Array.isArray(dados) ? dados : {};
   } catch {
     return {};
@@ -41,15 +51,17 @@ function coresSeguras(cores) {
 }
 
 function obterIdentidade() {
+  const inicial = lerIdentidadeInicial();
   const salva = lerIdentidade();
   const nomeEnv = textoSeguro(process.env.PIZZARIA_NOME, 80);
   const logoEnv = textoSeguro(process.env.PIZZARIA_LOGO, 2_000_000);
   return {
     ...padrao,
+    ...inicial,
     ...salva,
     nome: nomeEnv || textoSeguro(salva.nome, 80) || padrao.nome,
     logo: logoEnv || textoSeguro(salva.logo, 2_000_000) || padrao.logo,
-    cores: { ...padrao.cores, ...coresSeguras(salva.cores) }
+    cores: { ...padrao.cores, ...coresSeguras(inicial.cores), ...coresSeguras(salva.cores) }
   };
 }
 

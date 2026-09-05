@@ -84,6 +84,17 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
           ));
           return true;
         }
+
+        // Tamanho é obrigatório, mas só pode ser vendido quando tem preço
+        // cadastrado. Isso impede que P/F sem configuração apareça como R$ 0,00.
+        const valor = Number(precosPizzas[sabor]?.[item.tamanho]);
+        if (!Number.isFinite(valor) || valor <= 0) {
+          await msg.reply(formatarRespostaIa(
+            `❌ *A pizza ${sabor} no tamanho ${item.tamanho} ainda não está disponível no cardápio.*\n\n` +
+            "Escolha um tamanho com preço exibido no Cardápio Digital."
+          ));
+          return true;
+        }
       }
     }
 

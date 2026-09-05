@@ -292,11 +292,11 @@ router.post("/api/painel/catalogo/item", exigirAutenticacao, (req,res)=>{try{
     const valores=req.body?.precos||{},tamanhos={};
     for(const tamanho of ["P","M","G","F"]){const valor=Number(valores[tamanho]);if(!Number.isFinite(valor)||valor<=0)throw Error(`Informe um preço válido para o tamanho ${tamanho}.`);tamanhos[tamanho]=valor}
     const p=garantirArquivo("precospizzas.json","data/precospizzas.json",{}),c=garantirArquivo("configuracaoCardapio.json","data/configuracaoCardapio.json",{}),e=garantirArquivo("estoque.json","services/monitoramento/estoque.json",{pizzas:{},bebidas:{}}),pre=ler(p),conf=ler(c),est=ler(e);
-    if(pre[nome])throw Error("Já existe uma pizza com esse nome.");pre[nome]=tamanhos;conf.pizzasPorCategoria[categoria]||=[];conf.pizzasPorCategoria[categoria].push(nome);salvar(p,pre);salvar(c,conf);salvar(e,est);precos.atualizarIngredientesPizza(nome,ingredientes)
+    if(pre[nome])throw Error("Já existe uma pizza com esse nome.");pre[nome]=tamanhos;conf.pizzasPorCategoria[categoria]||=[];conf.pizzasPorCategoria[categoria].push(nome);est.pizzas=est.pizzas||{};est.pizzas[nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/-/g," ").replace(/\s+/g," ").trim()]=1;salvar(p,pre);salvar(c,conf);salvar(e,est);precos.atualizarIngredientesPizza(nome,ingredientes)
   }else if(tipo==="bebida"){
     const preco=Number(req.body?.preco);if(!Number.isFinite(preco)||preco<=0)throw Error("Informe um preço válido.");
     const k=nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_"),p=garantirArquivo("precosbebidas.json","data/precosbebidas.json",{}),n=garantirArquivo("nomesbebidas.json","data/nomesbebidas.json",{}),e=garantirArquivo("estoque.json","services/monitoramento/estoque.json",{pizzas:{},bebidas:{}}),pre=ler(p),nom=ler(n),est=ler(e);
-    if(pre[k])throw Error("Já existe uma bebida com esse nome.");pre[k]=preco;nom[k]={nome,aliases:[k.replaceAll("_"," ")]};salvar(p,pre);salvar(n,nom);salvar(e,est)
+    if(pre[k])throw Error("Já existe uma bebida com esse nome.");pre[k]=preco;nom[k]={nome,aliases:[k.replaceAll("_"," ")]};est.bebidas=est.bebidas||{};est.bebidas[k]=1;salvar(p,pre);salvar(n,nom);salvar(e,est)
   }else throw Error("Tipo inválido.");res.json({ok:true})
 }catch(e){res.status(400).json({erro:e.message})}});
 router.get("/api/painel/precos", exigirAutenticacao, (req,res)=>res.json(precos.catalogo()));

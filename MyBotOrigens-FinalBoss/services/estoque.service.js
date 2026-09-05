@@ -3,11 +3,40 @@ const path = require("path");
 
 const { garantirArquivo } = require("./dadosPersistentes.service");
 const estoquePath = garantirArquivo("estoque.json", "services/monitoramento/estoque.json", { pizzas: {}, bebidas: {} });
+const precosPizzasPath = garantirArquivo("precospizzas.json", "data/precospizzas.json", {});
+const precosBebidasPath = garantirArquivo("precosbebidas.json", "data/precosbebidas.json", {});
+const nomesBebidasPath = garantirArquivo("nomesbebidas.json", "data/nomesbebidas.json", {});
 
 const estoque = {
   pizzas: {},
   bebidas: {}
 };
+
+function lerJson(caminho, padrao = {}) {
+  try { return JSON.parse(fs.readFileSync(caminho, "utf8")); } catch { return padrao; }
+}
+
+function chavePizza(nome) {
+  return String(nome || "").toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/-/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// Estoque é controle de disponibilidade: 1 = disponível e 0 = esgotado.
+// Assim, itens novos aparecem no painel sem inventar uma quantidade física.
+function sincronizarCatalogo(dados) {
+  dados.pizzas = dados.pizzas || {};
+  dados.bebidas = dados.bebidas || {};
+  let mudou = false;
+  for (const nome of Object.keys(lerJson(precosPizzasPath))) {
+    const chave = chavePizza(nome);
+    if (!Object.prototype.hasOwnProperty.call(dados.pizzas, chave)) { dados.pizzas[chave] = 1; mudou = true; }
+  }
+  const bebidas = new Set([...Object.keys(lerJson(precosBebidasPath)), ...Object.keys(lerJson(nomesBebidasPath))]);
+  for (const chave of bebidas) {
+    if (!Object.prototype.hasOwnProperty.call(dados.bebidas, chave)) { dados.bebidas[chave] = 1; mudou = true; }
+  }
+  return mudou;
+}
 
 function recarregarEstoque() {
   try {
@@ -15,6 +44,7 @@ function recarregarEstoque() {
       fs.readFileSync(estoquePath, "utf8")
     );
 
+    if (sincronizarCatalogo(dados)) fs.writeFileSync(estoquePath, JSON.stringify(dados, null, 2), "utf8");
     estoque.pizzas = dados.pizzas || {};
     estoque.bebidas = dados.bebidas || {};
   } catch (err) {
@@ -103,6 +133,7 @@ module.exports = {
   zerarProduto,
   atualizarProdutos,
   definirQuantidadeProduto,
-  produtoDisponivel
+  produtoDisponivel,
+  sincronizarCatalogoEstoque: recarregarEstoque
 };
 
