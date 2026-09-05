@@ -1,8 +1,0 @@
-{
-  "coca_cola_2l": { "nome": "Coca-Cola 2L", "aliases": ["coca cola 2l", "coca 2l", "coca cola 2 litros", "coca 2 litros"] },
-  "coca_cola_1l": { "nome": "Coca-Cola 1L", "aliases": ["coca cola 1l", "coca 1l", "coca cola 1 litro", "coca 1 litro"] },
-  "guarana_2l": { "nome": "Guaraná 2L", "aliases": ["guarana 2l", "guarana 2 litros"] },
-  "agua_mineral_500ml": { "nome": "Água Mineral 500ml", "aliases": ["agua mineral", "agua 500ml"] },
-  "produto_teste_1_real": { "nome": "Produto teste — R$ 1,00", "aliases": ["produto teste 1 real"] },
-  "produto_teste_1_centavo": { "nome": "Produto teste — R$ 0,01", "aliases": ["produto teste 1 centavo"] }
-}
