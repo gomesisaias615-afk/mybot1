@@ -1,9 +1,11 @@
 const linkCardapioDigital =
   process.env.CARDAPIO_URL ||
   `${process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "https://mybotserver-k1w8.onrender.com"}/cardapio/?v=3`;
-const instagramPizzaria = process.env.INSTAGRAM_URL || "Instagram ainda não configurado";
+const instagramPizzaria = String(process.env.INSTAGRAM_URL || "").trim();
 const grupoWhatsApp = String(process.env.WHATSAPP_GROUP_URL || "").trim();
-const emailMyBot = process.env.MYBOT_EMAIL || "contato@mybot.com.br";
+const emailMyBot = process.env.MYBOT_EMAIL || "MyBot563@gmail.com";
+const temInstagram = /^https?:\/\//i.test(instagramPizzaria);
+const temGrupoPromocoes = /^https?:\/\//i.test(grupoWhatsApp);
 const { obterIdentidade } = require("../services/identidade.service");
 const nomePizzaria = obterIdentidade().nome;
 module.exports = {
@@ -14,21 +16,17 @@ module.exports = {
   // ================================
 
   menuInicial:
-`🍕 *${nomePizzaria.toUpperCase()}* 🍕
+`🍕 *${nomePizzaria.toUpperCase()}*
 
-Olá! 👋
+Olá! Eu sou o assistente virtual da pizzaria.
 
-Seja bem-vindo(a) à *${nomePizzaria}*!
+Escolha uma opção:
 
-🤖 *Eu sou o assistente virtual da pizzaria*
+🍕 *Fazer pedido*${temInstagram ? "\n📸 *Instagram*" : ""}${temGrupoPromocoes ? "\n📢 *Promoções*" : ""}
+👩‍💼 *Falar com atendente*
+✉️ *Contato MyBot*
 
-e vou te atender por aqui.
-
-🍕 *Vou te ajudar a fazer seu pedido*
-
-de forma rápida e simples.
-
-❤️ *Vamos começar?*\n\nEscolha uma opção:\n\n1️⃣ *Fazer pedido*\n2️⃣ *Instagram*\n3️⃣ *Falar com atendente*\n4️⃣ *Contato da MyBot*\n\nDigite o número ou o nome da opção.`,
+Toque em uma opção ou digite o nome dela.`,
 
   localizacao:
 `📍 Nossa localização...`,
@@ -39,12 +37,12 @@ de forma rápida e simples.
 Acompanhe nossas novidades e promoções:
 ${instagramPizzaria}`,
 
-  grupoPromocoes: grupoWhatsApp
+  grupoPromocoes: temGrupoPromocoes
     ? `📢 *Grupo oficial de promoções da ${nomePizzaria}*
 
 Entre no nosso grupo para receber promoções e novidades:
 ${grupoWhatsApp}`
-    : "📢 Nosso grupo de promoções será divulgado em breve.",
+    : "",
 
   contatoMyBot:
 `✉️ *Contato da MyBot*

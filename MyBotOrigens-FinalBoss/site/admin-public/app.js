@@ -1021,7 +1021,7 @@ renderPedidos = function renderPedidosEmGuias() {
       ? `${valorInformado(rec.rua)}, ${numeroEndereco(rec)} — ${valorInformado(rec.bairro)}, ${valorInformado(rec.cidade)}-${valorInformado(rec.estado)}`
       : retirada ? "Retirada no estabelecimento" : "Consumir no salão";
     const acaoPronto = entrega
-      ? `<div class="acoes-confirmacao"><button class="btn-compartilhar" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="compartilhar">Compartilhar</button><button class="btn-etapa" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="whatsapp">WhatsApp</button><button class="btn-etapa" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="gmail">Gmail</button><button class="btn-etapa" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="marcar">Marcar como enviado</button></div>`
+      ? `<div class="acoes-confirmacao acoes-envio"><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="whatsapp">↗ Enviar por WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="gmail">✉ Enviar por Gmail</button><button class="btn-envio marcar" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="marcar">✓ Marcar como enviado</button></div>`
       : `<button class="btn-etapa" data-status-pedido="concluido" data-id="${escapar(p.id)}">${retirada ? "Pedido retirado" : "Concluir atendimento"}</button>`;
 
     return `<article class="pedido ${p.demonstracao ? "pedido-demonstracao" : ""} ${tempo?.emAlerta ? "pedido-em-alerta" : ""}" data-pedido-card="${escapar(p.id)}">
@@ -1158,7 +1158,7 @@ function renderHistorico() {
         </div>
         <div class="detalhe largo"><span>TOTAL</span><strong>${moeda(rec.totalFinal ?? pedido.total)}</strong></div>
       </div>
-      ${entrega && pedido.status !== "cancelado" ? `<div class="acoes-confirmacao"><button class="btn-compartilhar" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="compartilhar">Reenviar</button><button class="btn-etapa" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="whatsapp">WhatsApp</button><button class="btn-etapa" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="gmail">Gmail</button></div>` : ""}
+      ${entrega && pedido.status !== "cancelado" ? `<div class="acoes-confirmacao acoes-historico"><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="whatsapp">↗ WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="gmail">✉ Gmail</button></div>` : ""}
     </article>`;
   }).join("") : `<div class="vazio">Nenhum pedido no Histórico.</div>`;
 }
@@ -1243,6 +1243,19 @@ async function criarFichaMotoboy(pedido) {
 }
 function baixarFicha(arquivo) { const url = URL.createObjectURL(arquivo), link = document.createElement("a"); link.href = url; link.download = arquivo.name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 
+function exibirFichaAntesDoEnvio(arquivo, pedido) {
+  const anterior = document.querySelector(".preview-ficha-overlay");
+  if (anterior) anterior.remove();
+  const url = URL.createObjectURL(arquivo);
+  const tela = document.createElement("div");
+  tela.className = "preview-ficha-overlay";
+  tela.innerHTML = `<section class="preview-ficha" role="dialog" aria-modal="true" aria-label="Ficha do pedido #${escapar(pedido.id)}"><button class="fechar-preview-ficha" type="button" aria-label="Fechar prévia">×</button><p>FICHA PARA ENVIO</p><h2>Pedido #${escapar(pedido.id)}</h2><img src="${url}" alt="Ficha com as informações do pedido #${escapar(pedido.id)}"><div><a class="baixar-preview-ficha" href="${url}" download="${escapar(arquivo.name)}">Baixar imagem</a><small>Imagem pronta para anexar no WhatsApp ou Gmail.</small></div></section>`;
+  const fechar = () => { URL.revokeObjectURL(url); tela.remove(); };
+  tela.querySelector(".fechar-preview-ficha").addEventListener("click", fechar);
+  tela.addEventListener("click", evento => { if (evento.target === tela) fechar(); });
+  document.body.append(tela);
+}
+
 document.addEventListener("click", async evento => {
   const botao = evento.target.closest("[data-enviar-motoboy]");
   if (!botao) return;
@@ -1258,6 +1271,12 @@ document.addEventListener("click", async evento => {
 
   try {
     botao.disabled = true;
+    if (canal === "whatsapp" || canal === "gmail") {
+      botao.textContent = "Gerando imagem...";
+      const ficha = await criarFichaMotoboy(pedido);
+      exibirFichaAntesDoEnvio(ficha, pedido);
+      baixarFicha(ficha);
+    }
     if (canal === "whatsapp") {
       window.open("https://wa.me/?text=" + encodeURIComponent(texto), "_blank", "noopener");
     } else if (canal === "gmail") {
@@ -1363,4 +1382,3 @@ document.addEventListener("input",e=>{if(e.target.id==="buscarImagens")renderIma
 document.querySelectorAll("[data-tipo-imagem]").forEach(b=>b.addEventListener("click",()=>{estado.tipoImagem=b.dataset.tipoImagem;document.querySelectorAll("[data-tipo-imagem]").forEach(x=>x.classList.toggle("ativa",x===b));renderImagens()}));
 function lerImagemArquivo(arquivo){return new Promise((resolve,reject)=>{if(!arquivo)return reject(new Error("Escolha uma imagem."));if(arquivo.size>3*1024*1024)return reject(new Error("A imagem deve ter no máximo 3 MB."));const leitor=new FileReader();leitor.onload=()=>resolve(leitor.result);leitor.onerror=()=>reject(new Error("Não foi possível ler a imagem."));leitor.readAsDataURL(arquivo)})}
 document.addEventListener("click",async e=>{const publicar=e.target.closest("[data-publicar-imagem]"),remover=e.target.closest("[data-remover-imagem]");if(!publicar&&!remover)return;const botao=publicar||remover,x=JSON.parse(decodeURIComponent(botao.dataset[publicar?"publicarImagem":"removerImagem"]));try{botao.disabled=true;if(remover){if(!confirm("Remover a imagem deste produto?"))return;await api("/api/painel/imagens/"+encodeURIComponent(x.tipo)+"/"+encodeURIComponent(x.chave),{method:"DELETE"});toast("Imagem removida do cardápio.")}else{const campo=document.querySelector('[data-arquivo-imagem="'+encodeURIComponent(JSON.stringify(x))+'"]'),imagem=await lerImagemArquivo(campo?.files?.[0]);await api("/api/painel/imagens/"+encodeURIComponent(x.tipo)+"/"+encodeURIComponent(x.chave),{method:"PUT",body:JSON.stringify({imagem})});toast("Imagem publicada no cardápio.")}estado.imagensProdutos=await api("/api/painel/imagens");renderImagens()}catch(erro){toast(erro.message)}finally{botao.disabled=false}});
-

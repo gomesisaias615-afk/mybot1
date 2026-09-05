@@ -54,6 +54,15 @@ async function enviarBotoes(destinatario, texto, botoes = []) {
 }
 
 async function enviarMenu(destinatario, texto) {
+  const instagram = /^https?:\/\//i.test(String(process.env.INSTAGRAM_URL || "").trim());
+  const grupoPromocoes = /^https?:\/\//i.test(String(process.env.WHATSAPP_GROUP_URL || "").trim());
+  const opcoes = [
+    { id: "menu_fazer_pedido", title: "🍕 Fazer pedido", description: "Veja o cardápio e monte seu pedido" },
+    ...(instagram ? [{ id: "menu_instagram", title: "📸 Instagram", description: "Acompanhe a pizzaria" }] : []),
+    ...(grupoPromocoes ? [{ id: "menu_promocoes", title: "📢 Promoções", description: "Entre no grupo oficial" }] : []),
+    { id: "menu_atendente", title: "👩‍💼 Atendente", description: "Solicite atendimento humano" },
+    { id: "menu_contato_mybot", title: "✉️ Contato MyBot", description: "Fale com a equipe do sistema" }
+  ];
   return requisitarMeta({
     to: somenteDigitos(destinatario),
     type: "interactive",
@@ -65,12 +74,7 @@ async function enviarMenu(destinatario, texto) {
         button: "Ver opções",
         sections: [{
           title: "Menu principal",
-          rows: [
-            { id: "menu_fazer_pedido", title: "🍕 Fazer pedido", description: "Veja o cardápio e monte seu pedido" },
-            { id: "menu_localizacao", title: "📍 Localização", description: "Endereço e informações da pizzaria" },
-            { id: "menu_promocoes", title: "📢 Promoções", description: "Entre no grupo oficial da pizzaria" },
-            { id: "menu_contato_mybot", title: "✉️ Contato MyBot", description: "Fale com a equipe responsável pelo sistema" }
-          ]
+          rows: opcoes
         }]
       }
     }
@@ -161,7 +165,7 @@ function textoDaMensagem(mensagem) {
   if (mensagem.type === "button") return mensagem.button?.text || mensagem.button?.payload || "";
   if (mensagem.type === "interactive") {
     const resposta = mensagem.interactive?.button_reply || mensagem.interactive?.list_reply;
-    const mapa = { menu_fazer_pedido: "1", menu_localizacao: "2", menu_promocoes: "3", menu_contato_mybot: "4", opcao_sim: "1", opcao_nao: "2", opcao_pix: "1", opcao_cartao: "2" };
+    const mapa = { menu_fazer_pedido: "fazer pedido", menu_instagram: "instagram", menu_promocoes: "promocoes", menu_atendente: "atendente", menu_contato_mybot: "contato mybot", opcao_sim: "1", opcao_nao: "2", opcao_pix: "1", opcao_cartao: "2" };
     return mapa[resposta?.id] || resposta?.title || "";
   }
   return "";
@@ -189,7 +193,6 @@ function extrairMensagens(body) {
 }
 
 module.exports = { clientMeta, extrairMensagens, validarAssinatura, validarConfiguracao, verificarWebhook };
-
 
 
 

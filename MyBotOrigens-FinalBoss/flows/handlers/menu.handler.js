@@ -1,6 +1,8 @@
 const textos = require("../textosFlows");
 const { normalizar } = require("../../utils/texto");
 const { salvarContexto } = require("../contextoAtendimento");
+const temInstagram = /^https?:\/\//i.test(String(process.env.INSTAGRAM_URL || "").trim());
+const temGrupoPromocoes = /^https?:\/\//i.test(String(process.env.WHATSAPP_GROUP_URL || "").trim());
 
 async function mostrarMenu(msg, user, contexto) {
   contexto.estados[user] = "menu";
@@ -23,7 +25,7 @@ async function tratarMenu({
 
   const texto = normalizar(msg.body);
 
-  if (["1", "fazer pedido"].includes(texto)) {
+  if (["1", "fazer pedido", "pedido"].includes(texto)) {
     recarregarEstoque();
     contexto.estados[user] = "pedido_pizza";
     await msg.reply(textos.comoPedirPizza);
@@ -31,12 +33,17 @@ async function tratarMenu({
     return true;
   }
 
-  if (["2", "instagram", "instagram da pizzaria"].includes(texto)) {
+  if (temInstagram && ["instagram", "instagram da pizzaria"].includes(texto)) {
     await msg.reply(textos.instagram, undefined, { linkPreview: true });
     return true;
   }
 
-  if (["3", "atendente", "falar com atendente", "fala com atendente"].includes(texto)) {
+  if (temGrupoPromocoes && ["promocoes", "promocao", "grupo de promocoes"].includes(texto)) {
+    await msg.reply(textos.grupoPromocoes, undefined, { linkPreview: true });
+    return true;
+  }
+
+  if (["atendente", "falar com atendente", "fala com atendente"].includes(texto)) {
     contexto.estados[user] = "aguardando_atendente";
     salvarContexto();
     const numeroAtendente = String(process.env.ATENDENTE_WHATSAPP || "").replace(/\D/g, "");
@@ -59,7 +66,7 @@ async function tratarMenu({
     return true;
   }
 
-  if (["4", "mybot", "contato mybot", "entrar em contato com a mybot"].includes(texto)) {
+  if (["mybot", "contato mybot", "entrar em contato com a mybot"].includes(texto)) {
     await msg.reply(textos.contatoMyBot, undefined, { linkPreview: true });
     return true;
   }
