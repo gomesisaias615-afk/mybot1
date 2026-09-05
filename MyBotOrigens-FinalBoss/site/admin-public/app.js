@@ -994,11 +994,14 @@ renderPedidos = function renderPedidosEmGuias() {
     pronto: ["pronto", "compartilhado"],
     concluido: ["saiu_entrega", "concluido"]
   };
-  const aguardandoConfirmacao = grupos.confirmar;
   document.querySelectorAll("[data-contador]").forEach(contador => {
     const quantidade = estado.dados.pedidos.filter(pedido =>
-      aguardandoConfirmacao.includes(pedido.status) &&
-      (pedido.recebimento?.modalidade || "entrega") === contador.dataset.contador
+      // O contador representa todos os pedidos ativos da modalidade. Ele só
+      // some ao entrar no Histórico (entregue/concluído/cancelado), e não ao
+      // abrir o pedido nem ao avançar para preparo ou pronto.
+      !["saiu_entrega", "concluido", "cancelado"].includes(pedido.status) &&
+      (contador.dataset.contador === "geral" ||
+        (pedido.recebimento?.modalidade || "entrega") === contador.dataset.contador)
     ).length;
     contador.textContent = String(quantidade);
     contador.hidden = quantidade === 0;
@@ -1021,7 +1024,7 @@ renderPedidos = function renderPedidosEmGuias() {
       ? `${valorInformado(rec.rua)}, ${numeroEndereco(rec)} — ${valorInformado(rec.bairro)}, ${valorInformado(rec.cidade)}-${valorInformado(rec.estado)}`
       : retirada ? "Retirada no estabelecimento" : "Consumir no salão";
     const acaoPronto = entrega
-      ? `<div class="acoes-confirmacao acoes-envio"><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="whatsapp">↗ Enviar por WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="gmail">✉ Enviar por Gmail</button><button class="btn-envio marcar" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="marcar">✓ Marcar como enviado</button></div>`
+      ? `<div class="acoes-confirmacao acoes-envio"><button class="btn-envio endereco" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="endereco">📍 Ver endereço</button><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="whatsapp">↗ Enviar por WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="gmail">✉ Enviar por e-mail</button><button class="btn-envio marcar" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="marcar">✓ Marcar como enviado</button></div>`
       : `<button class="btn-etapa" data-status-pedido="concluido" data-id="${escapar(p.id)}">${retirada ? "Pedido retirado" : "Concluir atendimento"}</button>`;
 
     return `<article class="pedido ${p.demonstracao ? "pedido-demonstracao" : ""} ${tempo?.emAlerta ? "pedido-em-alerta" : ""}" data-pedido-card="${escapar(p.id)}">
@@ -1158,7 +1161,7 @@ function renderHistorico() {
         </div>
         <div class="detalhe largo"><span>TOTAL</span><strong>${moeda(rec.totalFinal ?? pedido.total)}</strong></div>
       </div>
-      ${entrega && pedido.status !== "cancelado" ? `<div class="acoes-confirmacao acoes-historico"><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="whatsapp">↗ WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="gmail">✉ Gmail</button></div>` : ""}
+      ${entrega && pedido.status !== "cancelado" ? `<div class="acoes-confirmacao acoes-historico"><button class="btn-envio endereco" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="endereco">📍 Ver endereço</button><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="whatsapp">↗ WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="gmail">✉ E-mail</button></div>` : ""}
     </article>`;
   }).join("") : `<div class="vazio">Nenhum pedido no Histórico.</div>`;
 }
@@ -1243,15 +1246,29 @@ async function criarFichaMotoboy(pedido) {
 }
 function baixarFicha(arquivo) { const url = URL.createObjectURL(arquivo), link = document.createElement("a"); link.href = url; link.download = arquivo.name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 
+async function copiarFichaParaAreaTransferencia(arquivo) {
+  if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") return false;
+  await navigator.clipboard.write([new ClipboardItem({ [arquivo.type]: arquivo })]);
+  return true;
+}
+
 function exibirFichaAntesDoEnvio(arquivo, pedido) {
   const anterior = document.querySelector(".preview-ficha-overlay");
   if (anterior) anterior.remove();
   const url = URL.createObjectURL(arquivo);
   const tela = document.createElement("div");
   tela.className = "preview-ficha-overlay";
-  tela.innerHTML = `<section class="preview-ficha" role="dialog" aria-modal="true" aria-label="Ficha do pedido #${escapar(pedido.id)}"><button class="fechar-preview-ficha" type="button" aria-label="Fechar prévia">×</button><p>FICHA PARA ENVIO</p><h2>Pedido #${escapar(pedido.id)}</h2><img src="${url}" alt="Ficha com as informações do pedido #${escapar(pedido.id)}"><div><a class="baixar-preview-ficha" href="${url}" download="${escapar(arquivo.name)}">Baixar imagem</a><small>Imagem pronta para anexar no WhatsApp ou Gmail.</small></div></section>`;
+  tela.innerHTML = `<section class="preview-ficha" role="dialog" aria-modal="true" aria-label="Ficha do pedido #${escapar(pedido.id)}"><button class="fechar-preview-ficha" type="button" aria-label="Fechar prévia">×</button><p>FICHA PARA ENVIO</p><h2>Pedido #${escapar(pedido.id)}</h2><img src="${url}" alt="Ficha com as informações do pedido #${escapar(pedido.id)}"><div><button class="copiar-preview-ficha" type="button">Copiar imagem</button><a class="baixar-preview-ficha" href="${url}" download="${escapar(arquivo.name)}">Baixar imagem</a><small>No WhatsApp do computador, abra a conversa do motoboy e pressione Ctrl+V para colar a ficha.</small></div></section>`;
   const fechar = () => { URL.revokeObjectURL(url); tela.remove(); };
   tela.querySelector(".fechar-preview-ficha").addEventListener("click", fechar);
+  tela.querySelector(".copiar-preview-ficha").addEventListener("click", async evento => {
+    try {
+      await copiarFichaParaAreaTransferencia(arquivo);
+      evento.currentTarget.textContent = "Imagem copiada ✓";
+    } catch {
+      toast("Não foi possível copiar. Use o botão Baixar imagem para anexar o arquivo.");
+    }
+  });
   tela.addEventListener("click", evento => { if (evento.target === tela) fechar(); });
   document.body.append(tela);
 }
@@ -1271,16 +1288,28 @@ document.addEventListener("click", async evento => {
 
   try {
     botao.disabled = true;
+    if (canal === "endereco") {
+      if (!rota) throw new Error("O endereço do pedido ainda não possui dados suficientes para abrir o mapa.");
+      window.open(rota, "_blank", "noopener");
+      toast("Endereço aberto no Google Maps.");
+      return;
+    }
     if (canal === "whatsapp" || canal === "gmail") {
       botao.textContent = "Gerando imagem...";
       const ficha = await criarFichaMotoboy(pedido);
       exibirFichaAntesDoEnvio(ficha, pedido);
       baixarFicha(ficha);
+      if (canal === "whatsapp") {
+        try { await copiarFichaParaAreaTransferencia(ficha); }
+        catch { /* O download e o botão de cópia da prévia continuam disponíveis. */ }
+      }
     }
     if (canal === "whatsapp") {
       window.open("https://wa.me/?text=" + encodeURIComponent(texto), "_blank", "noopener");
+      toast("Ficha copiada e baixada. No WhatsApp, escolha o motoboy e pressione Ctrl+V para enviar a imagem.");
     } else if (canal === "gmail") {
       window.location.href = "mailto:?subject=" + encodeURIComponent("Pedido #" + pedido.id + " para entrega") + "&body=" + encodeURIComponent(texto);
+      toast("Ficha baixada. Anexe a imagem no e-mail antes de enviar.");
     } else if (canal === "compartilhar") {
       botao.textContent = "Preparando ficha...";
       const ficha = await criarFichaMotoboy(pedido);
@@ -1303,20 +1332,22 @@ document.addEventListener("click", async evento => {
       }
     }
 
-    if (pedido.status !== "saiu_entrega") {
+    // Abrir WhatsApp/Gmail não confirma envio: somente a opção explícita
+    // "Marcar como enviado" move o pedido e avisa o cliente.
+    if (canal === "marcar" && pedido.status !== "saiu_entrega") {
       const resultadoStatus = await api("/api/painel/pedidos/" + encodeURIComponent(pedido.id) + "/status", { method: "PATCH", body: JSON.stringify({ status: "saiu_entrega" }) });
       if (!resultadoStatus.notificacao?.enviada) throw new Error("A ação foi realizada, mas não foi possível avisar o cliente.");
       await animarTransicaoPedido(botao, "saiu_entrega");
       await carregar();
       toast(canal === "marcar" ? "Pedido marcado como enviado, cliente avisado e registrado no Histórico." : "Pedido enviado, cliente avisado e registrado no Histórico.");
-    } else {
+    } else if (canal === "marcar") {
       toast("Pedido reenviado.");
     }
   } catch (erro) {
     if (erro.name !== "AbortError") toast(erro.message);
   } finally {
     botao.disabled = false;
-    botao.textContent = canal === "compartilhar" ? (pedido.status === "saiu_entrega" ? "Reenviar" : "Compartilhar") : canal === "whatsapp" ? "WhatsApp" : canal === "gmail" ? "Gmail" : "Marcar como enviado";
+    botao.textContent = canal === "compartilhar" ? (pedido.status === "saiu_entrega" ? "Reenviar" : "Compartilhar") : canal === "endereco" ? "📍 Ver endereço" : canal === "whatsapp" ? "WhatsApp" : canal === "gmail" ? "E-mail" : "Marcar como enviado";
   }
 }, true);
 document.addEventListener("click", async evento => {
