@@ -45,6 +45,7 @@
       <span>Valor do pedido</span><strong id="pedidoSubtotal">R$ 0,00</strong>
       <span>Taxa de entrega</span><strong id="pedidoTaxaEntrega">R$ 0,00</strong>
       <span>Total final</span><strong id="pedidoTotal">R$ 0,00</strong>
+      <p id="statusTaxaEntrega" class="delivery-fee-status" aria-live="polite">Carregando a taxa de entrega...</p>
     </section>
 
     <section id="telaEndereco">
@@ -101,7 +102,6 @@
             <label>Bairro<input id="bairro" autocomplete="address-level3" placeholder="Digite ou selecione uma sugestão"></label>
             <label class="cep-field">CEP<input id="cep" required inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="00000000"></label>
           </div>
-          <p id="statusTaxaEntrega" class="delivery-fee-status" aria-live="polite">Carregando a taxa de entrega...</p>
           <label>Tipo de residência
             <span class="select-wrap">
               <select id="complemento">
@@ -170,7 +170,7 @@
     <section id="resultado" class="result hidden"></section>
 
     <footer class="safe-box">
-      <div class="mp-logo"><img src="/assets/mercado-pago.png" alt="Mercado Pago"></div>
+      <div class="mp-logo"><img src="/assets/mercado-pago.svg" alt="Mercado Pago" width="150" height="44"></div>
       <div class="safe-copy"><strong>◇ Pagamento 100% seguro</strong><p>Seus dados são protegidos e criptografados.</p></div>
     </footer>
     <button id="btnPagar" class="pay-button hidden" type="button">Pagar</button>
@@ -200,5 +200,3 @@
   <script>window.addEventListener("load",()=>setTimeout(()=>document.querySelector("#mybotSplash")?.classList.add("sair"),650));</script>
 </body>
 </html>
-
-

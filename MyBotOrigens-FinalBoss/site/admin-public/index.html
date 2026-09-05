@@ -51,7 +51,7 @@
         <div class="hero-marca"><img src="/cardapio/mascote-saborear.png" alt="Assistente MyBot"><button id="alternarBot" class="btn status-grande">Carregando...</button></div>
       </section>
 
-      <nav class="guias-principais" aria-label="Áreas do painel"><button class="guia-principal ativa" data-guia="pedidos">Pedidos</button><button class="guia-principal" data-guia="historico">Histórico</button><button class="guia-principal" data-guia="estoque">Estoque</button><button class="guia-principal" data-guia="precos">Preços e promoções</button><button class="guia-principal" data-guia="itens">Adicionar itens</button><button class="guia-principal" data-guia="ingredientes">Ingredientes</button><button class="guia-principal" data-guia="imagens">Imagens</button><button class="guia-principal" data-guia="horario">Horário</button><button class="guia-principal" data-guia="taxa">Taxa</button><button class="guia-principal" data-guia="ajuda">Ajuda</button></nav><section id="resumo" class="metricas"></section>
+      <nav class="guias-principais" aria-label="Áreas do painel"><button class="guia-principal ativa" data-guia="pedidos">Pedidos</button><button class="guia-principal" data-guia="historico">Histórico</button><button class="guia-principal" data-guia="estoque">Estoque</button><button class="guia-principal" data-guia="precos">Preços e promoções</button><button class="guia-principal" data-guia="itens">Adicionar itens</button><button class="guia-principal" data-guia="ingredientes">Ingredientes</button><button class="guia-principal" data-guia="imagens">Imagens</button><button class="guia-principal" data-guia="horario">Horário</button><button class="guia-principal" data-guia="taxa">Taxa e localização</button><button class="guia-principal" data-guia="ajuda">Ajuda</button></nav><section id="resumo" class="metricas"></section>
 
       <section class="grade-principal">
         <article class="card controles secao-painel" data-secao="horario">
@@ -199,7 +199,7 @@
           <article><span>6</span><div><h3>Imagens</h3><p>Pesquise uma pizza ou bebida, escolha a foto e toque em Publicar imagem. A foto aparece automaticamente no cardápio.</p><small>São aceitas imagens JPG, PNG e WebP de até 3 MB.</small></div></article>
           <article><span>7</span><div><h3>Ingredientes</h3><p>Use a barra de pesquisa para encontrar uma pizza. Edite a descrição dos ingredientes e toque em Salvar.</p><small>A nova descrição aparece no cardápio digital e permanece salva mesmo após reiniciar o sistema.</small></div></article>
           <article><span>8</span><div><h3>Horário</h3><p>Defina os dias e os horários de abertura e fechamento. Fora do período configurado, o bot não inicia pedidos.</p><small>Quando estiver fechado, o bot informa automaticamente ao cliente os dias e horários de atendimento.</small></div></article>
-          <article><span>9</span><div><h3>Taxa</h3><p>Primeiro confirme a localização da pizzaria. Depois abra Definir área no mapa para ajustar o círculo separadamente.</p><small>Na área, use − e + para mudar 500 metros ou digite o número desejado. Sem endereço confirmado e salvo, o SitePag permanece bloqueado.</small></div></article>
+          <article><span>9</span><div><h3>Taxa e localização</h3><p>Primeiro confirme e salve a localização da pizzaria. Depois escolha taxa fixa ou valor por quilômetro e defina a área atendida no mapa.</p><small>Na taxa por quilômetro, o SitePag calcula o valor conforme a localização informada pelo cliente. Na área, use − e + para mudar 500 metros ou digite o número desejado. Sem localização confirmada e salva, o SitePag permanece bloqueado.</small></div></article>
         </div>
       </section>
     </main>
@@ -238,6 +238,5 @@
   <script>window.addEventListener("load",()=>setTimeout(()=>document.querySelector("#mybotSplash")?.classList.add("sair"),650));</script>
 </body>
 </html>
-
 
 

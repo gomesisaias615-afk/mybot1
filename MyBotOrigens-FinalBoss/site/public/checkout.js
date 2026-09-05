@@ -80,7 +80,7 @@ function atualizarMensagemTaxaEntregaInicial() {
     status.textContent = "Taxa fixa de entrega: " + dinheiro(Number(configuracaoEntrega.taxaFixa || 0)) + ".";
     return;
   }
-  status.textContent = "A taxa por quilômetro será calculada quando o endereço for localizado.";
+  status.textContent = "A taxa por quilômetro será calculada conforme a localização informada.";
 }
 
 function esconderSugestoes() {
@@ -280,7 +280,7 @@ $("btnConfirmarLocalizacao").addEventListener("click", async () => {
     atualizarTotais();
     $("statusTaxaEntrega").textContent = calculo.modoTaxa === "fixa"
       ? `Taxa fixa confirmada: ${dinheiro(taxaEntrega)}.`
-      : `Distância aproximada: ${Number(calculo.distanciaKm).toFixed(1).replace(".",",")} km · taxa ${dinheiro(taxaEntrega)}.`;
+      : `Taxa de entrega para a localização informada: ${dinheiro(taxaEntrega)}.`;
     fecharMapaLocalizacao();
 
     const status = $("statusLocalizacao");
@@ -745,5 +745,4 @@ async function iniciar() {
 }
 
 iniciar();
-
 
