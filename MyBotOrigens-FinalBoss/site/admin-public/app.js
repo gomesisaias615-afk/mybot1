@@ -870,6 +870,12 @@ function nomeModalidade(modalidade) {
   return ({ entrega: "Entrega", retirada: "Retirada", salao: "Salão" })[modalidade] || "Não informada";
 }
 
+function modalidadeDoPedido(pedido) {
+  const modalidade = String(pedido?.recebimento?.modalidade || "entrega")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  return ["entrega", "salao", "retirada"].includes(modalidade) ? modalidade : "entrega";
+}
+
 function nomeProdutoCompleto(valor) {
   const palavrasMinusculas = new Set(["de", "da", "do", "das", "dos", "e"]);
   return String(valor || "")
@@ -1001,7 +1007,7 @@ renderPedidos = function renderPedidosEmGuias() {
       // abrir o pedido nem ao avançar para preparo ou pronto.
       !["saiu_entrega", "concluido", "cancelado"].includes(pedido.status) &&
       (contador.dataset.contador === "geral" ||
-        (pedido.recebimento?.modalidade || "entrega") === contador.dataset.contador)
+        modalidadeDoPedido(pedido) === contador.dataset.contador)
     ).length;
     contador.textContent = String(quantidade);
     contador.hidden = quantidade === 0;
@@ -1011,20 +1017,21 @@ renderPedidos = function renderPedidosEmGuias() {
     const fase = contador.dataset.contadorFase;
     const quantidade = estado.dados.pedidos.filter(pedido =>
       !["saiu_entrega", "concluido", "cancelado"].includes(pedido.status) &&
-      (grupos[fase] || []).includes(pedido.status)
+      (grupos[fase] || []).includes(pedido.status) &&
+      modalidadeDoPedido(pedido) === estado.modalidade
     ).length;
     contador.textContent = String(quantidade);
     contador.hidden = quantidade === 0;
     contador.parentElement?.classList.toggle("tem-pedidos", quantidade > 0);
   });
   pedidos = pedidos.filter(pedido => (grupos[estado.fase] || grupos.confirmar).includes(pedido.status));
-  pedidos = pedidos.filter(pedido => (pedido.recebimento?.modalidade || "entrega") === estado.modalidade);
+  pedidos = pedidos.filter(pedido => modalidadeDoPedido(pedido) === estado.modalidade);
 
   $("#pedidos").innerHTML = pedidos.length ? pedidos.map(p => {
     const pizzas = (p.pizzas || []).map(formatarPizzaCompleta);
     const bebidas = (p.bebidas || []).map(formatarBebidaCompleta);
     const rec = p.recebimento || {};
-    const modalidade = rec.modalidade || "entrega";
+    const modalidade = modalidadeDoPedido(p);
     const entrega = modalidade === "entrega";
     const retirada = modalidade === "retirada";
     const observacao = valorInformado(p.observacaoPizzas, p.observacao, rec.observacao);
