@@ -99,10 +99,23 @@ function confirmarPedidoPagamentoLocal(pedidoId) {
   return pedido;
 }
 
+function confirmarPedidoTeste(pedidoId) {
+  const pedidos = lerJson(pedidosPath, []);
+  const pedido = pedidos.find(item => item.id === pedidoId);
+  if (!pedido) throw new Error("Pedido de teste não encontrado");
+  pedido.status = "confirmado";
+  pedido.testeAutomatico = true;
+  pedido.pagamentoLocalConfirmado = true;
+  pedido.confirmadoEm = new Date().toISOString();
+  pedido.atualizadoEm = pedido.confirmadoEm;
+  salvarJson(pedidosPath, pedidos);
+  return pedido;
+}
+
 module.exports = {
   criarPedidoPendente,
   confirmarPedidoPago,
-  confirmarPedidoPagamentoLocal
+  confirmarPedidoPagamentoLocal,
+  confirmarPedidoTeste
 };
-
 

@@ -1000,12 +1000,18 @@ renderPedidos = function renderPedidosEmGuias() {
     pronto: ["pronto", "compartilhado"],
     concluido: ["saiu_entrega", "concluido"]
   };
+  // Pedidos que ainda estão no checkout não têm modalidade definitiva. Eles só
+  // entram nos avisos do painel depois do pagamento/confirmação.
+  const statusOperacionais = new Set([
+    ...grupos.confirmar,
+    ...grupos.em_preparo,
+    ...grupos.pronto
+  ]);
   document.querySelectorAll("[data-contador]").forEach(contador => {
     const quantidade = estado.dados.pedidos.filter(pedido =>
-      // O contador representa todos os pedidos ativos da modalidade. Ele só
-      // some ao entrar no Histórico (entregue/concluído/cancelado), e não ao
-      // abrir o pedido nem ao avançar para preparo ou pronto.
-      !["saiu_entrega", "concluido", "cancelado"].includes(pedido.status) &&
+      // Não contamos carrinhos ainda aguardando pagamento, pois o cliente pode
+      // mudar Entrega/Salão/Retirada antes da confirmação.
+      statusOperacionais.has(pedido.status) &&
       (contador.dataset.contador === "geral" ||
         modalidadeDoPedido(pedido) === contador.dataset.contador)
     ).length;
@@ -1016,7 +1022,7 @@ renderPedidos = function renderPedidosEmGuias() {
   document.querySelectorAll("[data-contador-fase]").forEach(contador => {
     const fase = contador.dataset.contadorFase;
     const quantidade = estado.dados.pedidos.filter(pedido =>
-      !["saiu_entrega", "concluido", "cancelado"].includes(pedido.status) &&
+      statusOperacionais.has(pedido.status) &&
       (grupos[fase] || []).includes(pedido.status) &&
       modalidadeDoPedido(pedido) === estado.modalidade
     ).length;

@@ -31,7 +31,9 @@ function salvarEnderecoPedido(pedidoId, user, endereco) {
     bairro: endereco?.bairro || "",
     complemento: endereco?.complemento || "Sem complemento",
     referencia: endereco?.referencia || "Sem referencia",
-    criadoEm: new Date().toISOString()
+    criadoEm: new Date().toISOString(),
+    // Campos adicionais são usados pelo checkout e pelo gerador de testes.
+    ...(endereco && typeof endereco === "object" ? endereco : {})
   };
 
   salvarEnderecos(enderecos);

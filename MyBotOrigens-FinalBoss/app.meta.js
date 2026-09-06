@@ -25,8 +25,10 @@ const {
 } = require("./services/whatsappMeta.service");
 const { definirClienteWhatsApp } = require("./services/whatsappRuntime.service");
 const { iniciarConvitesGrupo, processarRespostaConviteGrupo } = require("./services/convitesCanal.service");
+const { iniciarPedidosTesteAutomaticos } = require("./services/pedidosTesteAutomaticos.service");
 definirClienteWhatsApp(clientMeta);
 iniciarConvitesGrupo();
+iniciarPedidosTesteAutomaticos();
 
 process.on("unhandledRejection", erro => console.error("PROMESSA REJEITADA:", erro));
 process.on("uncaughtException", erro => console.error("ERRO NAO TRATADO:", erro));
@@ -183,6 +185,5 @@ process.once("SIGTERM", () => encerrar("SIGTERM"));
 process.once("SIGINT", () => encerrar("SIGINT"));
 
 module.exports = app;
-
 
 

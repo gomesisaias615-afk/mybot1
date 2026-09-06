@@ -13,6 +13,23 @@ const { catalogo, ativa } = require("../../services/precos.service");
 function moeda(valor) { return `R$ ${Number(valor || 0).toFixed(2).replace(".", ",")}`; }
 function riscar(valor) { return String(valor).split("").map(caractere => caractere + "\u0336").join(""); }
 
+function promocaoChave(promocao) {
+  return promocao ? `${promocao.nome || ""}|${promocao.de || ""}|${promocao.por || ""}` : "";
+}
+
+function agruparCarrinhoBebidas(itens) {
+  const agrupados = [];
+  for (const item of itens) {
+    const encontrado = agrupados.find(atual =>
+      String(atual.chave || atual.nome).toLowerCase() === String(item.chave || item.nome).toLowerCase() &&
+      atual.valor === item.valor && promocaoChave(atual.promocao) === promocaoChave(item.promocao)
+    );
+    if (encontrado) encontrado.quantidade += Number(item.quantidade) || 1;
+    else agrupados.push({ ...item, quantidade: Number(item.quantidade) || 1 });
+  }
+  return agrupados;
+}
+
 async function mostrarResumo(msg, user, contexto) {
   contexto.estados[user] = "confirmar_resumo";
   await msg.reply(
@@ -95,6 +112,7 @@ async function tratarBebida({ msg, user, contexto, estoque }) {
         promocao: ativa(promocoes[item.chave]) ? promocoes[item.chave] : null
       });
     }
+    contexto.carrinhoBebida[user] = agruparCarrinhoBebidas(contexto.carrinhoBebida[user]);
 
     let resumo = textos.confirmacaoBebidas;
 

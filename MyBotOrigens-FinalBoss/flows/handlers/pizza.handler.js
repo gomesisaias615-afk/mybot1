@@ -15,6 +15,38 @@ const { catalogo, ativa } = require("../../services/precos.service");
 function moeda(valor) { return `R$ ${Number(valor || 0).toFixed(2).replace(".", ",")}`; }
 function riscar(valor) { return String(valor).split("").map(caractere => caractere + "\u0336").join(""); }
 
+function promocaoChave(promocao) {
+  return promocao ? `${promocao.nome || ""}|${promocao.de || ""}|${promocao.por || ""}` : "";
+}
+
+function agruparCarrinhoPizzas(itens) {
+  const agrupados = [];
+  for (const item of itens) {
+    const sabores = (item.sabores || [item.sabor]).map(normalizar).sort().join("|");
+    const encontrado = agrupados.find(atual =>
+      (atual.sabores || [atual.sabor]).map(normalizar).sort().join("|") === sabores &&
+      atual.tamanho === item.tamanho && atual.valor === item.valor &&
+      promocaoChave(atual.promocao) === promocaoChave(item.promocao)
+    );
+    if (encontrado) encontrado.quantidade += Number(item.quantidade) || 1;
+    else agrupados.push({ ...item, quantidade: Number(item.quantidade) || 1 });
+  }
+  return agrupados;
+}
+
+function agruparCarrinhoBebidas(itens) {
+  const agrupados = [];
+  for (const item of itens) {
+    const encontrado = agrupados.find(atual =>
+      normalizar(atual.chave || atual.nome) === normalizar(item.chave || item.nome) &&
+      atual.valor === item.valor && promocaoChave(atual.promocao) === promocaoChave(item.promocao)
+    );
+    if (encontrado) encontrado.quantidade += Number(item.quantidade) || 1;
+    else agrupados.push({ ...item, quantidade: Number(item.quantidade) || 1 });
+  }
+  return agrupados;
+}
+
 function formatarRespostaIa(texto) {
   const conteudo = String(texto || "").replace(/\*/g, "").trim();
   return `\`\`\`\n${conteudo}\n\`\`\``;
@@ -126,6 +158,11 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
         promocao: ativa(catalogoPromos.bebidas?.[bebida.chave]) ? catalogoPromos.bebidas[bebida.chave] : null
       });
     }
+
+    // A IA pode devolver o mesmo produto em linhas separadas. Unificamos o
+    // carrinho antes de mostrar, cobrar e salvar o pedido.
+    contexto.carrinhoPizza[user] = agruparCarrinhoPizzas(contexto.carrinhoPizza[user]);
+    contexto.carrinhoBebida[user] = agruparCarrinhoBebidas(contexto.carrinhoBebida[user]);
 
     let resumo = textos.confirmacaoPizzas;
 
