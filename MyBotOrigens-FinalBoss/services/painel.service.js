@@ -27,9 +27,11 @@ const PADRAO = {
     valorPorKm: 2,
     taxaMinima: 5,
     distanciaMaximaKm: 1,
-    enderecoPizzaria: "",
-    latitudePizzaria: null,
-    longitudePizzaria: null,
+    enderecoPizzaria: "Rua Pedro Homem da Costa, 596 - Centro, Estância - SE, CEP 49200-000",
+    // Ponto inicial de testes em Estância-SE. Ajuste no painel para a posição
+    // exata da loja antes de usar o cálculo de entregas em produção.
+    latitudePizzaria: LOCALIDADE_EMPRESA.latitudeMapaInicial,
+    longitudePizzaria: LOCALIDADE_EMPRESA.longitudeMapaInicial,
     estadoAtendido: LOCALIDADE_EMPRESA.estado,
     cidadeAtendida: LOCALIDADE_EMPRESA.municipio,
     latitudeMapaInicial: LOCALIDADE_EMPRESA.latitudeMapaInicial,
@@ -203,4 +205,3 @@ module.exports = {
   botDentroDoHorario,
   obterHorarioConfigurado
 };
-

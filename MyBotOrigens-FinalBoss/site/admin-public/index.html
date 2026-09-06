@@ -153,7 +153,7 @@
             <button class="modalidade-pedido" data-modalidade="salao"><span>🍽️ Salão</span><b class="contador-pedidos" data-contador="salao" hidden>0</b></button>
             <button class="modalidade-pedido" data-modalidade="retirada"><span>🥡 Retirada</span><b class="contador-pedidos" data-contador="retirada" hidden>0</b></button>
           </div>
-          <div class="subguias-pedidos"><button class="subguia ativa" data-fase="confirmar">Confirmar</button><button class="subguia" data-fase="em_preparo">Em preparo</button><button class="subguia" data-fase="pronto">Pronto</button></div><div id="pedidos" class="lista-pedidos"></div>
+          <div class="subguias-pedidos"><button class="subguia ativa" data-fase="confirmar">Confirmar <b class="contador-pedidos" data-contador-fase="confirmar" hidden>0</b></button><button class="subguia" data-fase="em_preparo">Em preparo <b class="contador-pedidos" data-contador-fase="em_preparo" hidden>0</b></button><button class="subguia" data-fase="pronto">Pronto <b class="contador-pedidos" data-contador-fase="pronto" hidden>0</b></button></div><div id="pedidos" class="lista-pedidos"></div>
         </article>
       </section>
 
@@ -238,4 +238,3 @@
   <script>window.addEventListener("load",()=>setTimeout(()=>document.querySelector("#mybotSplash")?.classList.add("sair"),650));</script>
 </body>
 </html>
-

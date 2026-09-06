@@ -1007,6 +1007,16 @@ renderPedidos = function renderPedidosEmGuias() {
     contador.hidden = quantidade === 0;
     contador.parentElement?.classList.toggle("tem-pedidos", quantidade > 0);
   });
+  document.querySelectorAll("[data-contador-fase]").forEach(contador => {
+    const fase = contador.dataset.contadorFase;
+    const quantidade = estado.dados.pedidos.filter(pedido =>
+      !["saiu_entrega", "concluido", "cancelado"].includes(pedido.status) &&
+      (grupos[fase] || []).includes(pedido.status)
+    ).length;
+    contador.textContent = String(quantidade);
+    contador.hidden = quantidade === 0;
+    contador.parentElement?.classList.toggle("tem-pedidos", quantidade > 0);
+  });
   pedidos = pedidos.filter(pedido => (grupos[estado.fase] || grupos.confirmar).includes(pedido.status));
   pedidos = pedidos.filter(pedido => (pedido.recebimento?.modalidade || "entrega") === estado.modalidade);
 
