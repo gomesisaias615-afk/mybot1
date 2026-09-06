@@ -23,7 +23,9 @@ function gravar(dados) {
 }
 
 function linkGrupo() {
-  return String(process.env.WHATSAPP_GROUP_URL || "").trim();
+  const texto = String(process.env.WHATSAPP_GROUP_URL || "").trim();
+  const encontrado = texto.match(/https?:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+/i);
+  return encontrado ? encontrado[0] : texto;
 }
 
 function normalizarDestino(valor) {
@@ -121,7 +123,7 @@ async function processarRespostaConviteGrupo(msg) {
   gravar(convites);
   if (entrar) {
     const link = linkGrupo();
-    await msg.reply(link ? `📢 Perfeito! Entre no Grupo oficial por este link:\n${link}` : "O link do Grupo ainda não foi configurado.");
+    await msg.reply(link ? `📢 *Grupo oficial de promoções*\n\nToque em *Ver grupo* no cartão abaixo para entrar:\n${link}` : "O link do Grupo ainda não foi configurado.", undefined, { linkPreview: true });
   } else if (depois) {
     await msg.reply("Tudo bem 😊 Quando quiser, digite *promoções* para receber o link do Grupo.");
   } else {

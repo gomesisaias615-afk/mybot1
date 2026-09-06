@@ -1269,6 +1269,21 @@ async function criarFichaMotoboy(pedido) {
 }
 function baixarFicha(arquivo) { const url = URL.createObjectURL(arquivo), link = document.createElement("a"); link.href = url; link.download = arquivo.name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 
+function abrirWhatsAppDireto(texto) {
+  const mensagem = encodeURIComponent(texto);
+  const celular = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (celular) {
+    // Abre o aplicativo instalado (inclusive WhatsApp Business) sem passar por
+    // uma página intermediária do navegador. O fallback mantém compatibilidade.
+    window.location.href = `whatsapp://send?text=${mensagem}`;
+    setTimeout(() => {
+      if (document.visibilityState === "visible") window.location.href = `https://api.whatsapp.com/send?text=${mensagem}`;
+    }, 1200);
+    return;
+  }
+  window.open(`https://api.whatsapp.com/send?text=${mensagem}`, "_blank", "noopener");
+}
+
 async function copiarFichaParaAreaTransferencia(arquivo) {
   if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") return false;
   await navigator.clipboard.write([new ClipboardItem({ [arquivo.type]: arquivo })]);
@@ -1312,27 +1327,18 @@ document.addEventListener("click", async evento => {
   try {
     botao.disabled = true;
     if (canal === "endereco") {
-      if (!rota) throw new Error("O endereço do pedido ainda não possui dados suficientes para abrir o mapa.");
-      window.open(rota, "_blank", "noopener");
-      toast("Endereço aberto no Google Maps.");
-      return;
-    }
-    if (canal === "whatsapp" || canal === "gmail") {
       botao.textContent = "Gerando imagem...";
       const ficha = await criarFichaMotoboy(pedido);
       exibirFichaAntesDoEnvio(ficha, pedido);
-      baixarFicha(ficha);
-      if (canal === "whatsapp") {
-        try { await copiarFichaParaAreaTransferencia(ficha); }
-        catch { /* O download e o botão de cópia da prévia continuam disponíveis. */ }
-      }
+      toast("Imagem com o endereço aberta.");
+      return;
     }
     if (canal === "whatsapp") {
-      window.open("https://wa.me/?text=" + encodeURIComponent(texto), "_blank", "noopener");
-      toast("Ficha copiada e baixada. No WhatsApp, escolha o motoboy e pressione Ctrl+V para enviar a imagem.");
+      abrirWhatsAppDireto(texto);
+      toast("WhatsApp aberto. Escolha o motoboy e envie a mensagem.");
     } else if (canal === "gmail") {
       window.location.href = "mailto:?subject=" + encodeURIComponent("Pedido #" + pedido.id + " para entrega") + "&body=" + encodeURIComponent(texto);
-      toast("Ficha baixada. Anexe a imagem no e-mail antes de enviar.");
+      toast("Aplicativo de e-mail aberto.");
     } else if (canal === "compartilhar") {
       botao.textContent = "Preparando ficha...";
       const ficha = await criarFichaMotoboy(pedido);

@@ -2,7 +2,14 @@ const linkCardapioDigital =
   process.env.CARDAPIO_URL ||
   `${process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "https://mybotserver-k1w8.onrender.com"}/cardapio/?v=3`;
 const instagramPizzaria = String(process.env.INSTAGRAM_URL || "").trim();
-const grupoWhatsApp = String(process.env.WHATSAPP_GROUP_URL || "").trim();
+function limparLinkGrupo(valor) {
+  const texto = String(valor || "").trim();
+  // Links de grupo aceitam somente o código após chat.whatsapp.com. Remove
+  // parâmetros de compartilhamento, texto colado por engano e espaços finais.
+  const encontrado = texto.match(/https?:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+/i);
+  return encontrado ? encontrado[0] : texto;
+}
+const grupoWhatsApp = limparLinkGrupo(process.env.WHATSAPP_GROUP_URL);
 const emailMyBot = process.env.MYBOT_EMAIL || "MyBot563@gmail.com";
 const temInstagram = /^https?:\/\//i.test(instagramPizzaria);
 const temGrupoPromocoes = /^https?:\/\//i.test(grupoWhatsApp);
@@ -51,7 +58,7 @@ ${instagramPizzaria}`,
   grupoPromocoes: temGrupoPromocoes
     ? `📢 *Grupo oficial de promoções da ${nomePizzaria}*
 
-Entre no nosso grupo para receber promoções e novidades:
+Toque em *Ver grupo* no cartão abaixo para receber promoções e novidades:
 ${grupoWhatsApp}`
     : "",
 
