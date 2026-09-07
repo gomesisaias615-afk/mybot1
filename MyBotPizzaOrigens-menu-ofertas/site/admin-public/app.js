@@ -131,10 +131,14 @@ function render() {
     $("#enderecoPizzaria").value = "";
     $("#latitudePizzaria").value = entrega.latitudePizzaria ?? "";
     $("#longitudePizzaria").value = entrega.longitudePizzaria ?? "";
-    $("#estadoAtendido").value = entrega.estadoAtendido || "SE";
-    $("#cidadeAtendida").value = entrega.cidadeAtendida || "Estância";
+    const estadoConfigurado = String(entrega.estadoAtendido || "").trim().toUpperCase();
+    const municipioConfigurado = String(entrega.cidadeAtendida || "").trim();
+    $("#estadoAtendido").value = estadoConfigurado;
+    $("#cidadeAtendida").value = municipioConfigurado;
     $("#municipioAtendimentoResumo").textContent =
-      (entrega.cidadeAtendida || "Estância") + " — " + (entrega.estadoAtendido || "SE");
+      municipioConfigurado && estadoConfigurado
+        ? municipioConfigurado + " — " + estadoConfigurado
+        : "Localização ainda não definida";
     const latitudeMapaInicial = Number(entrega.latitudeMapaInicial);
     const longitudeMapaInicial = Number(entrega.longitudeMapaInicial);
     centroMapaConfigurado =
