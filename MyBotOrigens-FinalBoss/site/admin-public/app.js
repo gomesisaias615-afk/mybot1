@@ -1375,7 +1375,9 @@ document.addEventListener("click", async evento => {
       const ficha = await criarFichaMotoboy(pedido);
       const celular = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       const assunto = "Pedido #" + pedido.id + " para entrega";
-      if (celular) {
+      // "E-mail Web" sempre abre o Gmail no navegador. Os outros botões no
+      // celular usam o compartilhamento nativo para preservar o anexo.
+      if (celular && canal !== "email_web") {
         try {
           if (await compartilharFichaNoCelular(ficha, texto, assunto)) {
             toast("Escolha WhatsApp ou E-mail no compartilhamento: a imagem já será anexada.");
