@@ -1389,8 +1389,8 @@ document.addEventListener("click", async evento => {
       let instrucaoAnexo = "";
       try {
         const linkFicha = await criarLinkFichaEntrega(pedido);
-        textoComputador += "\n\n🧾 Ficha do pedido (ver e baixar):\n" + linkFicha;
-        instrucaoAnexo = " A mensagem já inclui o link da ficha para visualizar ou baixar.";
+        textoComputador += "\n\n🧾 Ficha do pedido:\n" + linkFicha;
+        instrucaoAnexo = " A mensagem já inclui o link da ficha.";
       } catch (_) {
         const fichaCopiada = await prepararFichaNoComputador(ficha);
         instrucaoAnexo = fichaCopiada
