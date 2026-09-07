@@ -6,8 +6,8 @@ const configuracaoPath = garantirArquivo("painel.json", "data/painel.json", {});
 
 // Para preparar o bot para outra empresa, altere somente este bloco.
 const LOCALIDADE_EMPRESA = Object.freeze({
-  estado: "",
-  municipio: "",
+  estado: "SE",
+  municipio: "Estância",
   latitudeMapaInicial: null,
   longitudeMapaInicial: null,
   zoomMapaInicial: 12
@@ -83,10 +83,9 @@ function normalizarConfiguracaoEntrega(valor = {}) {
     enderecoPizzaria: String(valor.enderecoPizzaria || base.enderecoPizzaria).trim(),
     latitudePizzaria: coordenadaEntrega(valor.latitudePizzaria, base.latitudePizzaria, -90, 90),
     longitudePizzaria: coordenadaEntrega(valor.longitudePizzaria, base.longitudePizzaria, -180, 180),
-    // Estado e município podem ser definidos por empresa nas variáveis do Render.
     // Endereço e pino do mapa continuam sendo configurados diretamente no painel.
-    estadoAtendido: String(process.env.MYBOT_ESTADO || base.estadoAtendido).trim(),
-    cidadeAtendida: String(process.env.MYBOT_MUNICIPIO || base.cidadeAtendida).trim(),
+    estadoAtendido: base.estadoAtendido,
+    cidadeAtendida: base.cidadeAtendida,
     latitudeMapaInicial: coordenadaEntrega(valor.latitudeMapaInicial, base.latitudeMapaInicial, -90, 90),
     longitudeMapaInicial: coordenadaEntrega(valor.longitudeMapaInicial, base.longitudeMapaInicial, -180, 180),
     zoomMapaInicial: numeroEntrega(valor.zoomMapaInicial, base.zoomMapaInicial, 2)
