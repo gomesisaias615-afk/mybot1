@@ -23,6 +23,7 @@ app.post("/api/formulario-empresa", async (req, res) => {
   try {
     const resposta = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": apiKey, "content-type": "application/json" }, body: JSON.stringify({ sender: { name: "MyBot - Cadastro", email: remetente }, to: [{ email: destinatario }], subject: `Novo cadastro: ${campos.empresa}`, textContent: texto, attachment: [{ name: `cadastro-${String(campos.empresa).replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.txt`, content: Buffer.from(texto, "utf8").toString("base64") }, ...anexos] }) });
     if (!resposta.ok) return res.status(502).json({ erro: "O Brevo recusou o envio. Confirme o remetente e a chave API." });
+    await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": apiKey, "content-type": "application/json" }, body: JSON.stringify({ sender: { name: "MyBot", email: remetente }, to: [{ email: campos.emailEmpresa }], subject: "Recebemos seu cadastro na MyBot", textContent: `Olá! Recebemos o cadastro da ${campos.empresa}. Nossa equipe analisará as informações e enviará a confirmação e os próximos passos por este e-mail.` }) }).catch(() => null);
     ultimoEnvio = Date.now();
     res.json({ ok: true });
   } catch (erro) {
