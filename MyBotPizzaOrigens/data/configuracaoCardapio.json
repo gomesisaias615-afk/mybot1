@@ -1,8 +1,8 @@
 {
   "pizzaria": {
-    "nome": "Pizzaria FinalBoss",
-    "nomeCurto": "FinalBoss",
-    "slogan": "Pizzas especiais"
+    "nome": "Minha Pizzaria",
+    "nomeCurto": "Pizzaria",
+    "slogan": "Cardápio digital"
   },
   "categorias": {
     "tradicionais": true,
@@ -11,8 +11,8 @@
     "bebidas": true
   },
   "pizzasPorCategoria": {
-    "tradicionais": ["Calabresa", "Portuguesa", "Mussarela"],
-    "especiais": ["Frango Catupiry", "Quatro Queijos", "Pepperoni"],
+    "tradicionais": [],
+    "especiais": [],
     "doces": []
   },
   "promocoes": {

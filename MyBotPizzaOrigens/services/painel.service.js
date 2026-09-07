@@ -6,10 +6,10 @@ const configuracaoPath = garantirArquivo("painel.json", "data/painel.json", {});
 
 // Para preparar o bot para outra empresa, altere somente este bloco.
 const LOCALIDADE_EMPRESA = Object.freeze({
-  estado: "SE",
-  municipio: "Estância",
-  latitudeMapaInicial: -11.269036826086955,
-  longitudeMapaInicial: -37.43860156521739,
+  estado: "",
+  municipio: "",
+  latitudeMapaInicial: null,
+  longitudeMapaInicial: null,
   zoomMapaInicial: 12
 });
 
@@ -23,13 +23,12 @@ const PADRAO = {
   },
   entrega: {
     modoTaxa: "por_km",
-    taxaFixa: 5,
-    valorPorKm: 2,
-    taxaMinima: 5,
-    distanciaMaximaKm: 1,
-    enderecoPizzaria: "Rua Pedro Homem da Costa, 596 - Centro, Estância - SE, CEP 49200-000",
-    // Ponto inicial de testes em Estância-SE. Ajuste no painel para a posição
-    // exata da loja antes de usar o cálculo de entregas em produção.
+    taxaFixa: 0,
+    valorPorKm: 0,
+    taxaMinima: 0,
+    distanciaMaximaKm: 0,
+    enderecoPizzaria: "",
+    // A localização deve ser definida no painel antes do uso em produção.
     latitudePizzaria: LOCALIDADE_EMPRESA.latitudeMapaInicial,
     longitudePizzaria: LOCALIDADE_EMPRESA.longitudeMapaInicial,
     estadoAtendido: LOCALIDADE_EMPRESA.estado,
