@@ -16,7 +16,7 @@ app.post("/api/formulario-empresa", async (req, res) => {
   const campos = req.body?.campos;
   const arquivos = Array.isArray(req.body?.arquivos) ? req.body.arquivos : [];
   if (!apiKey) return res.status(503).json({ erro: "O servidor de e-mail ainda não foi configurado." });
-  if (!campos?.empresa || !campos?.telefone || !campos?.emailEmpresa) return res.status(400).json({ erro: "Preencha nome, telefone e e-mail da empresa." });
+  if (!campos?.empresa || !campos?.telefone || !campos?.emailEmpresa || !campos?.estado || !campos?.municipio) return res.status(400).json({ erro: "Preencha nome, telefone, e-mail, estado e município da empresa." });
   const anexos = arquivos.filter(arquivo => arquivo?.nome && arquivo?.conteudo).map(arquivo => ({ name: String(arquivo.nome).replace(/[^a-z0-9._-]/gi, "-"), content: String(arquivo.conteudo) }));
   if (anexos.some(arquivo => arquivo.content.length > 4_200_000)) return res.status(400).json({ erro: "Cada arquivo pode ter no máximo 3 MB." });
   const texto = Object.entries(campos).map(([chave, valor]) => `${chave}: ${String(valor || "-").trim() || "-"}`).join("\n");
