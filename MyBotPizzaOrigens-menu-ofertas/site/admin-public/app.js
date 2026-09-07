@@ -390,8 +390,11 @@ function criarIconeCentroMapa() {
 
 function adicionarMapaBase(mapa) {
   let reservaAtivada = false;
-  const principal = L.tileLayer("/api/mapa/tiles/{z}/{x}/{y}.png", {
+  // Carrega os blocos diretamente no navegador. Assim o mapa não depende da
+  // conexão externa do Render, que pode falhar e deixar a tela somente azul.
+  const principal = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
+    subdomains: "abc",
     crossOrigin: true,
     updateWhenIdle: false,
     keepBuffer: 4,
