@@ -1047,7 +1047,7 @@ renderPedidos = function renderPedidosEmGuias() {
       ? `${valorInformado(rec.rua)}, ${numeroEndereco(rec)} — ${valorInformado(rec.bairro)}, ${valorInformado(rec.cidade)}-${valorInformado(rec.estado)}`
       : retirada ? "Retirada no estabelecimento" : "Consumir no salão";
     const acaoPronto = entrega
-      ? `<div class="acoes-confirmacao acoes-envio"><button class="btn-envio endereco" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="endereco">📍 Ver endereço</button><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="whatsapp">↗ Enviar por WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="gmail">✉ Enviar por e-mail</button><button class="btn-envio marcar" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="marcar">✓ Marcar como enviado</button></div>`
+      ? `<div class="acoes-confirmacao acoes-envio"><button class="btn-envio endereco" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="endereco">📍 Ver endereço</button><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="whatsapp">↗ Enviar por WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="gmail">✉ E-mail</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="email_web">🌐 E-mail Web</button><button class="btn-envio marcar" data-enviar-motoboy="${escapar(p.id)}" data-canal-envio="marcar">✓ Marcar como enviado</button></div>`
       : `<button class="btn-etapa" data-status-pedido="concluido" data-id="${escapar(p.id)}">${retirada ? "Pedido retirado" : "Concluir atendimento"}</button>`;
 
     return `<article class="pedido ${p.demonstracao ? "pedido-demonstracao" : ""} ${tempo?.emAlerta ? "pedido-em-alerta" : ""}" data-pedido-card="${escapar(p.id)}">
@@ -1184,7 +1184,7 @@ function renderHistorico() {
         </div>
         <div class="detalhe largo"><span>TOTAL</span><strong>${moeda(rec.totalFinal ?? pedido.total)}</strong></div>
       </div>
-      ${entrega && pedido.status !== "cancelado" ? `<div class="acoes-confirmacao acoes-historico"><button class="btn-envio endereco" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="endereco">📍 Ver endereço</button><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="whatsapp">↗ WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="gmail">✉ E-mail</button></div>` : ""}
+      ${entrega && pedido.status !== "cancelado" ? `<div class="acoes-confirmacao acoes-historico"><button class="btn-envio endereco" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="endereco">📍 Ver endereço</button><button class="btn-envio whatsapp" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="whatsapp">↗ WhatsApp</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="gmail">✉ E-mail</button><button class="btn-envio gmail" data-enviar-motoboy="${escapar(pedido.id)}" data-canal-envio="email_web">🌐 E-mail Web</button></div>` : ""}
     </article>`;
   }).join("") : `<div class="vazio">Nenhum pedido no Histórico.</div>`;
 }
@@ -1284,6 +1284,23 @@ function abrirWhatsAppDireto(texto) {
   window.open(`https://api.whatsapp.com/send?text=${mensagem}`, "_blank", "noopener");
 }
 
+function abrirEmailWeb(assunto, texto) {
+  const params = new URLSearchParams({ view: "cm", fs: "1", su: assunto, body: texto });
+  window.open(`https://mail.google.com/mail/?${params.toString()}`, "_blank", "noopener");
+}
+
+async function compartilharFichaNoCelular(ficha, texto, titulo) {
+  const podeCompartilhar = navigator.share && (!navigator.canShare || navigator.canShare({ files: [ficha] }));
+  if (!podeCompartilhar) return false;
+  await navigator.share({ files: [ficha], title: titulo, text: texto });
+  return true;
+}
+
+function prepararFichaNoComputador(ficha) {
+  baixarFicha(ficha);
+  copiarFichaParaAreaTransferencia(ficha).catch(() => {});
+}
+
 async function copiarFichaParaAreaTransferencia(arquivo) {
   if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") return false;
   await navigator.clipboard.write([new ClipboardItem({ [arquivo.type]: arquivo })]);
@@ -1333,12 +1350,32 @@ document.addEventListener("click", async evento => {
       toast("Imagem com o endereço aberta.");
       return;
     }
-    if (canal === "whatsapp") {
-      abrirWhatsAppDireto(texto);
-      toast("WhatsApp aberto. Escolha o motoboy e envie a mensagem.");
-    } else if (canal === "gmail") {
-      window.location.href = "mailto:?subject=" + encodeURIComponent("Pedido #" + pedido.id + " para entrega") + "&body=" + encodeURIComponent(texto);
-      toast("Aplicativo de e-mail aberto.");
+    if (canal === "whatsapp" || canal === "gmail" || canal === "email_web") {
+      botao.textContent = "Gerando imagem...";
+      const ficha = await criarFichaMotoboy(pedido);
+      const celular = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const assunto = "Pedido #" + pedido.id + " para entrega";
+      if (celular) {
+        try {
+          if (await compartilharFichaNoCelular(ficha, texto, assunto)) {
+            toast("Escolha WhatsApp ou E-mail no compartilhamento: a imagem já será anexada.");
+            return;
+          }
+        } catch (erroCompartilhamento) {
+          if (erroCompartilhamento.name === "AbortError") return;
+        }
+      }
+      prepararFichaNoComputador(ficha);
+      if (canal === "whatsapp") {
+        abrirWhatsAppDireto(texto);
+        toast("WhatsApp aberto. A imagem foi baixada e copiada para anexar.");
+      } else if (canal === "gmail") {
+        window.location.href = "mailto:?subject=" + encodeURIComponent(assunto) + "&body=" + encodeURIComponent(texto);
+        toast("E-mail aberto. A imagem foi baixada e copiada para anexar.");
+      } else {
+        abrirEmailWeb(assunto, texto);
+        toast("Gmail Web aberto. A imagem foi baixada e copiada para anexar.");
+      }
     } else if (canal === "compartilhar") {
       botao.textContent = "Preparando ficha...";
       const ficha = await criarFichaMotoboy(pedido);
@@ -1376,7 +1413,7 @@ document.addEventListener("click", async evento => {
     if (erro.name !== "AbortError") toast(erro.message);
   } finally {
     botao.disabled = false;
-    botao.textContent = canal === "compartilhar" ? (pedido.status === "saiu_entrega" ? "Reenviar" : "Compartilhar") : canal === "endereco" ? "📍 Ver endereço" : canal === "whatsapp" ? "WhatsApp" : canal === "gmail" ? "E-mail" : "Marcar como enviado";
+    botao.textContent = canal === "compartilhar" ? (pedido.status === "saiu_entrega" ? "Reenviar" : "Compartilhar") : canal === "endereco" ? "📍 Ver endereço" : canal === "whatsapp" ? "WhatsApp" : canal === "gmail" ? "E-mail" : canal === "email_web" ? "🌐 E-mail Web" : "Marcar como enviado";
   }
 }, true);
 document.addEventListener("click", async evento => {
