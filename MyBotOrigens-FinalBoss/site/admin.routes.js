@@ -22,6 +22,44 @@ const DURACAO_SESSAO = 24 * 60 * 60 * 1000;
 const COOKIE_PAINEL = "mybot_painel_seguro";
 const cacheLocalizacaoReversa = new Map();
 const LIMITE_CACHE_LOCALIZACAO = 300;
+const ARQUIVO_FICHAS_PUBLICAS = garantirArquivo("fichasEntregaCompartilhadas.json", "data/fichasEntregaCompartilhadas.json", {});
+const DURACAO_FICHA_PUBLICA = 7 * 24 * 60 * 60 * 1000;
+
+function escaparSvg(valor) {
+  return String(valor ?? "").replace(/[&<>\"']/g, caractere => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&apos;"
+  }[caractere]));
+}
+
+function linhasSvg(linhas, largura = 860) {
+  const resultado = [];
+  for (const original of linhas) {
+    const palavras = String(original || "").split(/\s+/).filter(Boolean);
+    if (!palavras.length) { resultado.push(""); continue; }
+    let atual = "";
+    for (const palavra of palavras) {
+      const candidata = atual ? `${atual} ${palavra}` : palavra;
+      if (candidata.length > 52 && atual) { resultado.push(atual); atual = palavra; }
+      else atual = candidata;
+    }
+    if (atual) resultado.push(atual);
+  }
+  return resultado;
+}
+
+function svgFichaPublica(ficha) {
+  const linhas = linhasSvg(ficha.linhas || []);
+  const altura = Math.max(620, 235 + linhas.length * 43 + 80);
+  let y = 235;
+  const corpo = linhas.map(linha => {
+    if (!linha) { y += 18; return ""; }
+    const destaque = /^(ITENS DO PEDIDO|STATUS DO PAGAMENTO|FORMA DE PAGAMENTO|PAGAMENTO|PARCELAS|CLIENTE|CONTATO|ENDEREÇO|COMPLEMENTO|REFERÊNCIA|CIDADE\/CEP|OBSERVAÇÃO|TOTAL)(:|$)/.test(linha);
+    const trecho = `<text x="55" y="${y}" fill="${destaque ? "#117546" : "#17211d"}" font-size="25" font-weight="${destaque ? "700" : "600"}" font-family="Arial, sans-serif">${escaparSvg(linha)}</text>`;
+    y += 43;
+    return trecho;
+  }).join("");
+  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="980" height="${altura}" viewBox="0 0 980 ${altura}"><rect width="980" height="${altura}" fill="#f3f6f4"/><rect width="980" height="180" fill="#12251d"/><text x="55" y="68" fill="#fff" font-size="32" font-weight="700" font-family="Arial, sans-serif">PEDIDO PARA ENTREGA</text><text x="55" y="135" fill="#fff" font-size="58" font-weight="700" font-family="Arial, sans-serif">#${escaparSvg(ficha.id)}</text>${corpo}</svg>`;
+}
 
 function tokenAdministrador() {
   return String(process.env.PANEL_ADMIN_TOKEN || "").trim();
@@ -112,6 +150,41 @@ router.post("/api/painel/sair", exigirAutenticacao, (req, res) => {
   res.clearCookie(COOKIE_PAINEL, { path: "/api/painel" });
   res.clearCookie("mybot_painel", { path: "/" });
   res.sendStatus(204);
+});
+
+// Cria um link temporário, compartilhável apenas por quem o recebeu, para a
+// imagem da ficha. Isso permite encaminhar a ficha no WhatsApp Web sem anexar
+// arquivos manualmente.
+router.post("/api/painel/ficha-entrega", exigirAutenticacao, (req, res) => {
+  const id = String(req.body?.id || "").trim();
+  const linhasRecebidas = Array.isArray(req.body?.linhas) ? req.body.linhas : [];
+  const linhas = linhasRecebidas.map(linha => String(linha || "").trim()).filter((linha, indice) => linha || indice > 0).slice(0, 100);
+  if (!id || !linhas.length || linhas.some(linha => linha.length > 500)) {
+    return res.status(400).json({ erro: "Ficha de entrega inválida." });
+  }
+  const agora = Date.now();
+  const fichas = JSON.parse(fs.readFileSync(ARQUIVO_FICHAS_PUBLICAS, "utf8") || "{}");
+  for (const [token, ficha] of Object.entries(fichas)) {
+    if (!ficha?.expiraEm || ficha.expiraEm < agora) delete fichas[token];
+  }
+  const token = crypto.randomBytes(24).toString("base64url");
+  fichas[token] = { id, linhas, expiraEm: agora + DURACAO_FICHA_PUBLICA };
+  fs.writeFileSync(ARQUIVO_FICHAS_PUBLICAS, JSON.stringify(fichas, null, 2));
+  const base = `${req.protocol}://${req.get("host")}`;
+  res.json({ url: `${base}/ficha-entrega/${token}.svg`, expiraEm: fichas[token].expiraEm });
+});
+
+router.get("/ficha-entrega/:token.svg", (req, res) => {
+  try {
+    const fichas = JSON.parse(fs.readFileSync(ARQUIVO_FICHAS_PUBLICAS, "utf8") || "{}");
+    const ficha = fichas[req.params.token];
+    if (!ficha || !ficha.expiraEm || ficha.expiraEm < Date.now()) return res.status(410).type("text").send("Esta ficha expirou.");
+    const baixar = String(req.query.download || "") === "1";
+    if (baixar) res.attachment(`pedido-${ficha.id}.svg`);
+    res.set("Cache-Control", "private, max-age=300").type("image/svg+xml").send(svgFichaPublica(ficha));
+  } catch {
+    res.status(404).type("text").send("Ficha não encontrada.");
+  }
 });
 
 router.get("/api/painel/localizacao/reversa", exigirAutenticacao, async (req, res) => {

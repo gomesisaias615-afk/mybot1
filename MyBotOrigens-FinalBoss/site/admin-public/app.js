@@ -1296,9 +1296,29 @@ async function compartilharFichaNoCelular(ficha, texto, titulo) {
   return true;
 }
 
-function prepararFichaNoComputador(ficha) {
+async function prepararFichaNoComputador(ficha) {
+  // Sites não recebem autorização para anexar em WhatsApp/Gmail, mas os dois
+  // aceitam uma imagem copiada pelo operador com Ctrl+V.
+  let copiada = false;
+  try {
+    copiada = await copiarFichaParaAreaTransferencia(ficha);
+  } catch (_) {
+    copiada = false;
+  }
   baixarFicha(ficha);
-  copiarFichaParaAreaTransferencia(ficha).catch(() => {});
+  return copiada;
+}
+
+async function criarLinkFichaEntrega(pedido) {
+  const resposta = await fetch("/api/painel/ficha-entrega", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(dadosFicha(pedido))
+  });
+  const dados = await resposta.json().catch(() => ({}));
+  if (!resposta.ok || !dados.url) throw new Error(dados.erro || "Não foi possível criar o link da ficha.");
+  return dados.url;
 }
 
 async function copiarFichaParaAreaTransferencia(arquivo) {
@@ -1365,16 +1385,27 @@ document.addEventListener("click", async evento => {
           if (erroCompartilhamento.name === "AbortError") return;
         }
       }
-      prepararFichaNoComputador(ficha);
+      let textoComputador = texto;
+      let instrucaoAnexo = "";
+      try {
+        const linkFicha = await criarLinkFichaEntrega(pedido);
+        textoComputador += "\n\n🧾 Ficha do pedido (ver e baixar):\n" + linkFicha;
+        instrucaoAnexo = " A mensagem já inclui o link da ficha para visualizar ou baixar.";
+      } catch (_) {
+        const fichaCopiada = await prepararFichaNoComputador(ficha);
+        instrucaoAnexo = fichaCopiada
+          ? " A imagem também foi copiada: clique na mensagem e use Ctrl+V para anexá-la."
+          : " A imagem foi baixada: anexe o arquivo pedido-" + pedido.id + ".png na mensagem.";
+      }
       if (canal === "whatsapp") {
-        abrirWhatsAppDireto(texto);
-        toast("WhatsApp aberto. A imagem foi baixada e copiada para anexar.");
+        abrirWhatsAppDireto(textoComputador);
+        toast("WhatsApp aberto." + instrucaoAnexo);
       } else if (canal === "gmail") {
-        window.location.href = "mailto:?subject=" + encodeURIComponent(assunto) + "&body=" + encodeURIComponent(texto);
-        toast("E-mail aberto. A imagem foi baixada e copiada para anexar.");
+        window.location.href = "mailto:?subject=" + encodeURIComponent(assunto) + "&body=" + encodeURIComponent(textoComputador);
+        toast("E-mail aberto." + instrucaoAnexo);
       } else {
-        abrirEmailWeb(assunto, texto);
-        toast("Gmail Web aberto. A imagem foi baixada e copiada para anexar.");
+        abrirEmailWeb(assunto, textoComputador);
+        toast("Gmail Web aberto." + instrucaoAnexo);
       }
     } else if (canal === "compartilhar") {
       botao.textContent = "Preparando ficha...";
