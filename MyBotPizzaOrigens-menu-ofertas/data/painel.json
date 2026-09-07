@@ -1,0 +1,26 @@
+{
+  "botAtivo": false,
+  "horarioAbertura": "00:00",
+  "horarioFechamento": "00:00",
+  "diasFuncionamento": {
+    "domingo": false,
+    "segunda": false,
+    "terca": false,
+    "quarta": false,
+    "quinta": false,
+    "sexta": false,
+    "sabado": false
+  },
+  "entrega": {
+    "modoTaxa": "fixa",
+    "taxaFixa": 0,
+    "valorPorKm": 0,
+    "taxaMinima": 0,
+    "enderecoPizzaria": "",
+    "latitudePizzaria": null,
+    "longitudePizzaria": null,
+    "estadoAtendido": "",
+    "cidadeAtendida": ""
+  },
+  "atualizadoEm": null
+}

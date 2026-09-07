@@ -1,0 +1,5 @@
+# Localização administrativa da empresa (opcional)
+# Cadastre estes valores no Render. Endereço e ponto no mapa são ajustados no painel.
+
+MYBOT_ESTADO=
+MYBOT_MUNICIPIO=
