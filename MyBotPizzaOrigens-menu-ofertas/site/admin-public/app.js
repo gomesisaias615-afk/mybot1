@@ -139,8 +139,12 @@ function render() {
       municipioConfigurado && estadoConfigurado
         ? municipioConfigurado + " — " + estadoConfigurado
         : "Localização ainda não definida";
-    const latitudeMapaInicial = Number(entrega.latitudeMapaInicial);
-    const longitudeMapaInicial = Number(entrega.longitudeMapaInicial);
+    // Number(null) vira 0 em JavaScript. Isso levava o mapa para 0,0,
+    // no oceano, quando ainda não havia uma localização salva.
+    const latitudeMapaTexto = String(entrega.latitudeMapaInicial ?? "").trim();
+    const longitudeMapaTexto = String(entrega.longitudeMapaInicial ?? "").trim();
+    const latitudeMapaInicial = latitudeMapaTexto ? Number(latitudeMapaTexto) : NaN;
+    const longitudeMapaInicial = longitudeMapaTexto ? Number(longitudeMapaTexto) : NaN;
     centroMapaConfigurado =
       Number.isFinite(latitudeMapaInicial) && Number.isFinite(longitudeMapaInicial)
         ? {
