@@ -27,7 +27,6 @@ const catalogoEnderecosPath = path.join(
 );
 const cardapioPublicPath = process.env.CARDAPIO_PUBLIC_DIR || path.join(__dirname, "cardapio-public");
 const { montarCardapio } = require("./cardapio.server");
-const { agendarConviteGrupo } = require("../services/convitesCanal.service");
 const mpClient = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN
 });
@@ -867,13 +866,6 @@ app.post("/api/pedido/:pedidoId/endereco", async (req, res) => {
     criadoEm: new Date().toISOString()
   };
   fs.writeFileSync(enderecosPath, JSON.stringify(enderecos, null, 2), "utf8");
-
-  // Um minuto após o pedido, convida o cliente para seguir o Canal oficial.
-  agendarConviteGrupo({
-    pedidoId: pedido.id,
-    cliente: pedido.cliente,
-    contato: enderecos[pedido.id].contato
-  });
 
   // Mantém o telefone real junto ao pedido para as notificações do painel.
   const pedidos = lerJson(pedidosPath, []);
