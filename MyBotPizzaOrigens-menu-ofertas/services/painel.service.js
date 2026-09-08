@@ -11,7 +11,7 @@ const LOCALIDADE_EMPRESA = Object.freeze({
   // Centro apenas para abrir o mapa; o endereço exato continua sendo escolhido no painel.
   latitudeMapaInicial: -11.2659,
   longitudeMapaInicial: -37.4484,
-  zoomMapaInicial: 12
+  zoomMapaInicial: 7
 });
 
 const PADRAO = {
