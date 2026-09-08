@@ -135,8 +135,11 @@ function render() {
     $("#cidadeAtendida").value = entrega.cidadeAtendida || "Estância";
     $("#municipioAtendimentoResumo").textContent =
       (entrega.cidadeAtendida || "Estância") + " — " + (entrega.estadoAtendido || "SE");
-    const latitudeMapaInicial = Number(entrega.latitudeMapaInicial);
-    const longitudeMapaInicial = Number(entrega.longitudeMapaInicial);
+    // Number(null) vira 0 e abriria o mapa no oceano (0,0).
+    const latitudeMapaTexto = String(entrega.latitudeMapaInicial ?? "").trim();
+    const longitudeMapaTexto = String(entrega.longitudeMapaInicial ?? "").trim();
+    const latitudeMapaInicial = latitudeMapaTexto ? Number(latitudeMapaTexto) : NaN;
+    const longitudeMapaInicial = longitudeMapaTexto ? Number(longitudeMapaTexto) : NaN;
     centroMapaConfigurado =
       Number.isFinite(latitudeMapaInicial) && Number.isFinite(longitudeMapaInicial)
         ? {

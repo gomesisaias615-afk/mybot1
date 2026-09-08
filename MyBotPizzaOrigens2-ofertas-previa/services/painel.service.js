@@ -6,10 +6,11 @@ const configuracaoPath = garantirArquivo("painel.json", "data/painel.json", {});
 
 // Para preparar o bot para outra empresa, altere somente este bloco.
 const LOCALIDADE_EMPRESA = Object.freeze({
-  estado: "",
-  municipio: "",
-  latitudeMapaInicial: null,
-  longitudeMapaInicial: null,
+  estado: "SE",
+  municipio: "Estância",
+  // Centro inicial da cidade; o endereço exato é escolhido no painel.
+  latitudeMapaInicial: -11.2659,
+  longitudeMapaInicial: -37.4484,
   zoomMapaInicial: 12
 });
 
@@ -88,7 +89,8 @@ function normalizarConfiguracaoEntrega(valor = {}) {
     cidadeAtendida: base.cidadeAtendida,
     latitudeMapaInicial: coordenadaEntrega(valor.latitudeMapaInicial, base.latitudeMapaInicial, -90, 90),
     longitudeMapaInicial: coordenadaEntrega(valor.longitudeMapaInicial, base.longitudeMapaInicial, -180, 180),
-    zoomMapaInicial: numeroEntrega(valor.zoomMapaInicial, base.zoomMapaInicial, 2)
+    // Evita que um zoom antigo salvo no painel substitua o padrão da cidade.
+    zoomMapaInicial: base.zoomMapaInicial
   };
 }
 
