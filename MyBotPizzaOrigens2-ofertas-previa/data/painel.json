@@ -1,15 +1,15 @@
 {
-  "botAtivo": false,
+  "botAtivo": true,
   "horarioAbertura": "00:00",
   "horarioFechamento": "00:00",
   "diasFuncionamento": {
-    "domingo": false,
-    "segunda": false,
-    "terca": false,
-    "quarta": false,
-    "quinta": false,
-    "sexta": false,
-    "sabado": false
+    "domingo": true,
+    "segunda": true,
+    "terca": true,
+    "quarta": true,
+    "quinta": true,
+    "sexta": true,
+    "sabado": true
   },
   "entrega": {
     "modoTaxa": "fixa",
