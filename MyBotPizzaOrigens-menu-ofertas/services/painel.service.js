@@ -89,7 +89,9 @@ function normalizarConfiguracaoEntrega(valor = {}) {
     cidadeAtendida: base.cidadeAtendida,
     latitudeMapaInicial: coordenadaEntrega(valor.latitudeMapaInicial, base.latitudeMapaInicial, -90, 90),
     longitudeMapaInicial: coordenadaEntrega(valor.longitudeMapaInicial, base.longitudeMapaInicial, -180, 180),
-    zoomMapaInicial: numeroEntrega(valor.zoomMapaInicial, base.zoomMapaInicial, 2)
+    // Não reutiliza um zoom antigo salvo no painel: o mapa deve sempre abrir
+    // no enquadramento padrão da cidade configurada.
+    zoomMapaInicial: base.zoomMapaInicial
   };
 }
 
