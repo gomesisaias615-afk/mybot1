@@ -87,13 +87,16 @@ function cookies(req) {
 function criarSessao(res) {
   const id = crypto.randomBytes(32).toString("base64url");
   sessoes.set(hash(id), Date.now() + DURACAO_SESSAO);
+  // Remove o cookie antigo, que tinha um caminho diferente, para evitar colisão.
+  res.clearCookie(COOKIE_PAINEL, { path: "/api/painel" });
   res.clearCookie("mybot_painel", { path: "/" });
   res.cookie(COOKIE_PAINEL, id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    // A sessão deve sobreviver à navegação normal entre abas e ao retorno ao painel.
+    sameSite: "lax",
     maxAge: DURACAO_SESSAO,
-    path: "/api/painel"
+    path: "/"
   });
 }
 
@@ -170,6 +173,7 @@ router.post("/api/painel/entrar", (req, res) => {
 router.post("/api/painel/sair", exigirAutenticacao, (req, res) => {
   const id = cookies(req)[COOKIE_PAINEL];
   if (id) sessoes.delete(hash(id));
+  res.clearCookie(COOKIE_PAINEL, { path: "/" });
   res.clearCookie(COOKIE_PAINEL, { path: "/api/painel" });
   res.clearCookie("mybot_painel", { path: "/" });
   res.sendStatus(204);
