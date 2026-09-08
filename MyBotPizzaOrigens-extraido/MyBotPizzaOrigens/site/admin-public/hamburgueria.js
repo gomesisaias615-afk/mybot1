@@ -1,0 +1,21 @@
+(() => {
+  const endpoint="/api/painel/hamburgueria";
+  const moeda=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  async function requisicao(url,opcoes={}){const r=await fetch(url,{headers:{"Content-Type":"application/json",...(opcoes.headers||{})},...opcoes});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.erro||"Não foi possível concluir a ação.");return d}
+  function montar(){
+    const area=document.querySelector("main"); if(!area||document.querySelector("#catalogoHamburgueria"))return;
+    document.querySelectorAll("[data-guia='ingredientes']").forEach(b=>b.textContent="Descrição e adicionais");
+    document.querySelectorAll("[data-guia='itens']").forEach(b=>b.textContent="Cardápio");
+    // As telas antigas de pizza continuam no código por compatibilidade, mas não
+    // ficam expostas nesta configuração de hamburgueria.
+    ["itens","ingredientes","precos"].forEach(nome=>document.querySelectorAll(`[data-secao="${nome}"]`).forEach(el=>el.hidden=true));
+    const sec=document.createElement("section");sec.id="catalogoHamburgueria";sec.className="card controles";
+    sec.innerHTML=`<div class="titulo-card"><div><p class="eyebrow">CARDÁPIO DA HAMBURGUERIA</p><h2>Produtos e adicionais</h2></div></div><p>Cadastre somente os produtos e preços reais da empresa. Hambúrgueres não usam tamanho.</p><div class="grade-entrega"><form id="formProdutoHamb"><label>Categoria<select name="categoria"><option value="hamburgueres">Hambúrgueres</option><option value="combos">Combos</option><option value="acompanhamentos">Acompanhamentos</option><option value="bebidas">Bebidas</option></select></label><label>Nome<input name="nome" required maxlength="80"></label><label>Descrição<input name="descricao" maxlength="500" placeholder="Ex.: pão, carne e queijo"></label><label>Preço (R$)<input name="preco" required type="number" step="0.01" min="0.01"></label><button class="btn primario largura">Adicionar item</button></form><form id="formAdicionalHamb"><label>Nome do adicional<input name="nome" required maxlength="80"></label><label>Preço (R$)<input name="preco" required type="number" step="0.01" min="0.01"></label><button class="btn primario largura">Adicionar adicional</button></form></div><div id="listaCatalogoHamb" class="lista-produtos"></div><div id="listaAdicionaisHamb" class="lista-produtos"></div>`;
+    area.insertBefore(sec,area.querySelector(".grade-principal"));
+    document.querySelectorAll("[data-guia='itens'],[data-guia='ingredientes']").forEach(botao=>botao.addEventListener("click",e=>{e.preventDefault();sec.scrollIntoView({behavior:"smooth",block:"start"})},true));
+    sec.querySelector("#formProdutoHamb").addEventListener("submit",async e=>{e.preventDefault();try{await requisicao(endpoint+"/itens",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});e.target.reset();carregar()}catch(x){alert(x.message)}});
+    sec.querySelector("#formAdicionalHamb").addEventListener("submit",async e=>{e.preventDefault();try{await requisicao(endpoint+"/adicionais",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});e.target.reset();carregar()}catch(x){alert(x.message)}});
+  }
+  async function carregar(){const sec=document.querySelector("#catalogoHamburgueria");if(!sec)return;try{const d=await requisicao(endpoint+"/catalogo");const lista=(itens,adicional=false)=>itens.length?`<h3>${adicional?"Adicionais":"Itens cadastrados"}</h3>${itens.map(i=>`<div class="linha-preco"><span><strong>${i.nome}</strong><small>${i.categoria||"Adicional"} · ${moeda(i.preco)}</small></span><button class="btn discreto" data-remover="${i.id}" data-adicional="${adicional}">Remover</button></div>`).join("")}`:"";sec.querySelector("#listaCatalogoHamb").innerHTML=lista(d.produtos);sec.querySelector("#listaAdicionaisHamb").innerHTML=lista(d.adicionais,true);sec.querySelectorAll("[data-remover]").forEach(b=>b.onclick=async()=>{if(!confirm("Remover este item?"))return;try{await requisicao(endpoint+(b.dataset.adicional==="true"?"/adicionais/":"/itens/")+b.dataset.remover,{method:"DELETE"});carregar()}catch(x){alert(x.message)}})}catch{}}
+  window.addEventListener("load",()=>setTimeout(()=>{montar();carregar()},900));
+})();

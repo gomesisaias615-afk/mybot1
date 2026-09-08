@@ -29,16 +29,16 @@ module.exports = {
   // ================================
 
   menuInicial:
-`🍕 *${nomePizzaria.toUpperCase()}* 🍕
+`🍔 *${nomePizzaria.toUpperCase()}* 🍔
 
 Olá! 👋
 
 Seja bem-vindo(a) à *${nomePizzaria}*!
 
-🤖 *Eu sou o assistente virtual da pizzaria*
+🤖 *Eu sou o assistente virtual da hamburgueria*
 e vou te atender por aqui.
 
-🍕 *Vou te ajudar a fazer seu pedido*
+🍔 *Vou te ajudar a fazer seu pedido*
 de forma rápida e simples.
 
 ❤️ *Vamos começar?*
@@ -120,6 +120,21 @@ Escolha as pizzas desejadas e, depois:
 ✅ Você pode pedir uma ou várias pizzas na mesma mensagem.
 
 🚀 *Acesse o CARDÁPIO DIGITAL pelo link enviado na próxima mensagem e faça seu pedido!*`,
+
+  comoPedirHamburguer:
+`🍔 *COMO FAZER SEU PEDIDO*
+
+📖 Acesse o *CARDÁPIO DIGITAL DE ${nomePizzaria.toUpperCase()}* pelo link abaixo.
+
+Escolha entre hambúrgueres, combos, acompanhamentos e bebidas. Depois envie seu pedido aqui no chat.
+
+💬 *Exemplos:*
+
+\`2 Hambúrgueres e 1 Coca-Cola\`
+
+\`1 Combo Família e 2 Batatas Fritas\`
+
+✅ Você pode pedir vários itens na mesma mensagem. Depois do hambúrguer, mostraremos os adicionais disponíveis.`,
 
   comoPedirBebidas:
 `🥤 As bebidas também estão disponíveis no *CARDÁPIO DIGITAL*.

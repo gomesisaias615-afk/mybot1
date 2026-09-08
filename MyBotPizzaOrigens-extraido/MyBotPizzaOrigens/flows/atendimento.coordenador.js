@@ -13,9 +13,7 @@ const {
   tratarMenu,
   tratarAtalhoMenu
 } = require("./handlers/menu.handler");
-const { tratarPizza } = require("./handlers/pizza.handler");
-const { tratarObservacaoPizza } = require("./handlers/observacaoPizza.handler");
-const { tratarBebida } = require("./handlers/bebida.handler");
+const { tratarHamburguer } = require("./handlers/hamburguer.handler");
 const { tratarResumo } = require("./handlers/resumo.handler");
 const { tratarEndereco } = require("./handlers/endereco.handler");
 const {
@@ -27,8 +25,8 @@ function mostrarMenu(msg, user) {
 }
 
 const ESTADOS_TEXTO_LIVRE = new Set([
-  "pedido_pizza", "pedido_bebida", "digitar_observacao_pizza",
-  "confirmar_pizza", "perguntar_observacao_pizza", "confirmar_bebida",
+  "pedido_hamburguer", "perguntar_adicionais", "pedido_adicionais",
+  "perguntar_observacao_hamburguer", "digitar_observacao_hamburguer",
   "confirmar_resumo", "conf_contato", "conf_rua", "conf_numero", "conf_bairro",
   "complemento_pergunta", "referencia_pergunta", "confirmar_endereco",
   "endereco_contato", "endereco_rua", "endereco_numero", "endereco_bairro",
@@ -37,10 +35,9 @@ const ESTADOS_TEXTO_LIVRE = new Set([
 
 async function tratarComandoGlobal(msg, client, user, texto) {
   const iniciarAtendimento =
-    ["menu", "oi", "oi bot", "ola", "ola bot", "pizza", "bom dia", "boa tarde", "boa noite"]
+    ["menu", "oi", "oi bot", "ola", "ola bot", "hamburguer", "lanche", "bom dia", "boa tarde", "boa noite"]
       .includes(texto) ||
-    texto === "quero pizza" ||
-    texto === "quero uma pizza";
+    texto === "quero hamburguer" || texto === "quero um hamburguer" || texto === "quero lanche";
 
   if (iniciarAtendimento) {
     resetarUsuario(user);
@@ -102,9 +99,7 @@ async function atendimento(msg, client) {
   }
 
   if (await tratarMenu(parametros)) return;
-  if (await tratarPizza(parametros)) return;
-  if (await tratarObservacaoPizza(parametros)) return;
-  if (await tratarBebida(parametros)) return;
+  if (await tratarHamburguer(parametros)) return;
   if (await tratarResumo(parametros)) return;
   if (await tratarEndereco(parametros)) return;
 

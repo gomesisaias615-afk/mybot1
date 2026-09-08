@@ -43,8 +43,8 @@ async function executarOpcaoMenu({
 
   if (opcao === "pedido") {
     recarregarEstoque();
-    contexto.estados[user] = "pedido_pizza";
-    await msg.reply(textos.comoPedirPizza);
+    contexto.estados[user] = "pedido_hamburguer";
+    await msg.reply(textos.comoPedirHamburguer);
     await msg.reply(textos.linkCardapioDigital, undefined, { linkPreview: false });
     return true;
   }

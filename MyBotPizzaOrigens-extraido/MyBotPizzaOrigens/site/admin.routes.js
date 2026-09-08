@@ -6,6 +6,7 @@ const { garantirArquivo } = require("../services/dadosPersistentes.service");
 const precos = require("../services/precos.service");
 const { montarCardapio } = require("./cardapio.server");
 const imagensProdutos = require("../services/imagemProduto.service");
+const catalogoHamburgueria = require("../services/hamburgueriaCatalogo.service");
 const { atualizarProdutos, recarregarEstoque, definirQuantidadeProduto } = require("../services/estoque.service");
 const { obterClienteWhatsApp } = require("../services/whatsappRuntime.service");
 const { buscarContatoCliente } = require("../services/marketing.service");
@@ -172,6 +173,25 @@ router.post("/api/painel/sair", exigirAutenticacao, (req, res) => {
   res.clearCookie(COOKIE_PAINEL, { path: "/api/painel" });
   res.clearCookie("mybot_painel", { path: "/" });
   res.sendStatus(204);
+});
+
+// Catálogo da hamburgueria: separado do legado de pizzaria para não exigir tamanhos.
+router.get("/api/painel/hamburgueria/catalogo", exigirAutenticacao, (req, res) => res.json(catalogoHamburgueria.ler()));
+router.post("/api/painel/hamburgueria/itens", exigirAutenticacao, (req, res) => {
+  try { res.status(201).json(catalogoHamburgueria.adicionar(req.body, false)); }
+  catch (erro) { res.status(400).json({ erro: erro.message }); }
+});
+router.delete("/api/painel/hamburgueria/itens/:id", exigirAutenticacao, (req, res) => {
+  try { res.json(catalogoHamburgueria.remover(req.params.id, false)); }
+  catch (erro) { res.status(404).json({ erro: erro.message }); }
+});
+router.post("/api/painel/hamburgueria/adicionais", exigirAutenticacao, (req, res) => {
+  try { res.status(201).json(catalogoHamburgueria.adicionar(req.body, true)); }
+  catch (erro) { res.status(400).json({ erro: erro.message }); }
+});
+router.delete("/api/painel/hamburgueria/adicionais/:id", exigirAutenticacao, (req, res) => {
+  try { res.json(catalogoHamburgueria.remover(req.params.id, true)); }
+  catch (erro) { res.status(404).json({ erro: erro.message }); }
 });
 
 // Cria um link temporário, compartilhável apenas por quem o recebeu, para a

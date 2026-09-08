@@ -1,67 +1,17 @@
-
-function gerarResumo(user, carrinhoPizza, carrinhoBebida) {
-
-  let txt = "🧾 RESUMO DO PEDIDO\n\n";
-
+function gerarResumo(user, itensPorUsuario, adicionaisPorUsuario) {
+  const itens = itensPorUsuario[user] || [];
+  const adicionais = adicionaisPorUsuario[user] || [];
   let total = 0;
-
-  // ================= PIZZAS =================
-
-  if (Array.isArray(carrinhoPizza[user]) && carrinhoPizza[user].length > 0) {
-
-    txt += "🍕 PIZZAS\n\n";
-
-    carrinhoPizza[user].forEach(p => {
-
-      const subtotal =
-        p.quantidade * p.valor;
-
-      total += subtotal;
-
-      txt +=
-        `${p.quantidade}x ${p.sabor} ${p.tamanho}\n`;
-
-      txt +=
-        `💰 R$ ${subtotal.toFixed(2).replace(".", ",")}\n\n`;
-    });
-
-  }
-
-  // ================= BEBIDAS =================
-
-  if (Array.isArray(carrinhoBebida[user]) && carrinhoBebida[user].length > 0) {
-
-    txt += "🥤 BEBIDAS\n\n";
-
-    carrinhoBebida[user].forEach(b => {
-
-      const subtotal =
-        b.quantidade * b.valor;
-
-      total += subtotal;
-
-      txt +=
-        `${b.quantidade}x ${b.nome}\n`;
-
-      txt +=
-        `💰 R$ ${subtotal.toFixed(2).replace(".", ",")}\n\n`;
-
-    });
-
-  }
-
-  txt +=
-  `💵 TOTAL: R$ ${total.toFixed(2).replace(".", ",")}\n\n`;
-
-  txt +=
-    "Deseja continuar?\n\n" +
-    "1️⃣ Sim\n" +
-    "2️⃣ Não";
-
-  return txt;
-
+  const linha = item => {
+    const valor = Number(item.valor ?? item.preco ?? 0);
+    const subtotal = Number(item.quantidade || 1) * valor;
+    total += subtotal;
+    return `${item.quantidade || 1}x ${item.nome || item.sabor}\n💰 R$ ${subtotal.toFixed(2).replace(".", ",")}`;
+  };
+  let texto = "🧾 *RESUMO DO PEDIDO*\n\n";
+  if (itens.length) texto += `🍔 *ITENS*\n\n${itens.map(linha).join("\n\n")}\n\n`;
+  if (adicionais.length) texto += `➕ *ADICIONAIS*\n\n${adicionais.map(linha).join("\n\n")}\n\n`;
+  texto += `💵 *TOTAL: R$ ${total.toFixed(2).replace(".", ",")}*\n\nDeseja continuar?\n\n1️⃣ Sim\n2️⃣ Não`;
+  return texto;
 }
-
-module.exports = {
-  gerarResumo
-};
+module.exports = { gerarResumo };

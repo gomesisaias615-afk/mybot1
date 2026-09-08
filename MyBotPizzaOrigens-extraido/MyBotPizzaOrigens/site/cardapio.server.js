@@ -10,6 +10,7 @@ const configuracaoCardapioPath = garantirArquivo("configuracaoCardapio.json", "d
 const precosService = require("../services/precos.service");
 const { estoque, recarregarEstoque, produtoDisponivel } = require("../services/estoque.service");
 const imagensProdutos = require("../services/imagemProduto.service");
+const hamburgueria = require("../services/hamburgueriaCatalogo.service");
 
 function lerJson(caminho, padrao) {
   try {
@@ -79,6 +80,15 @@ const detalhesPizzas = {
 };
 
 function montarCardapio() {
+  const catalogoHamburgueria = hamburgueria.catalogoPublico();
+  return {
+    categorias: hamburgueria.categorias,
+    produtos: catalogoHamburgueria.produtos.map(item => ({ ...item, tipo: item.categoria, ingredientes: item.descricao, disponivel: item.disponivel !== false })),
+    adicionais: catalogoHamburgueria.adicionais,
+    configuracao: { categorias: Object.fromEntries(hamburgueria.categorias.map(categoria => [categoria, true])), pizzaria: { nome: "Nova hamburgueria", slogan: "" } },
+    atualizadoEm: new Date().toISOString()
+  };
+  /* legado de pizzaria preservado abaixo para compatibilidade com instalações antigas.
   const catalogoPrecos = precosService.catalogo();
   const precosPizzas = catalogoPrecos.pizzas;
   const nomesBebidas = catalogoPrecos.nomesBebidas;
@@ -144,7 +154,7 @@ function montarCardapio() {
       }
     },
     atualizadoEm: new Date().toISOString()
-  };
+  }; */
 }
 
 const tipos = {
