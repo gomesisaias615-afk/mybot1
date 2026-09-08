@@ -145,7 +145,7 @@ function render() {
         ? {
             latitude: latitudeMapaInicial,
             longitude: longitudeMapaInicial,
-            zoom: Math.min(18, Math.max(4, Number(entrega.zoomMapaInicial) || 12))
+            zoom: Math.min(18, Math.max(4, Number(entrega.zoomMapaInicial) || 14))
           }
         : null;
     const latitude = Number(entrega.latitudePizzaria);
@@ -315,7 +315,7 @@ function coordenadasPizzariaAtuais() {
     Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
   // Mesmo com endereço já salvo, mantenha o enquadramento inicial escolhido.
   // Antes este trecho forçava 19 e ignorava o zoom configurado.
-  if (possuiCoordenadas) return { latitude, longitude, zoom: centroMapaConfigurado?.zoom || 12 };
+  if (possuiCoordenadas) return { latitude, longitude, zoom: centroMapaConfigurado?.zoom || 14 };
   if (centroMapaConfigurado) return { ...centroMapaConfigurado };
   const estado = String($("#estadoAtendido").value || "").toUpperCase();
   return CENTROS_ESTADOS_BR[estado] || { latitude: -14.235, longitude: -51.9253, zoom: 4 };
