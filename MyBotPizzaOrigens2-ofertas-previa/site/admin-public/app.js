@@ -313,7 +313,9 @@ function coordenadasPizzariaAtuais() {
   const possuiCoordenadas = latitudeTexto && longitudeTexto &&
     Number.isFinite(latitude) && Number.isFinite(longitude) &&
     Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
-  if (possuiCoordenadas) return { latitude, longitude, zoom: 19 };
+  // Mesmo com endereço já salvo, mantenha o enquadramento inicial escolhido.
+  // Antes este trecho forçava 19 e ignorava o zoom configurado.
+  if (possuiCoordenadas) return { latitude, longitude, zoom: centroMapaConfigurado?.zoom || 12 };
   if (centroMapaConfigurado) return { ...centroMapaConfigurado };
   const estado = String($("#estadoAtendido").value || "").toUpperCase();
   return CENTROS_ESTADOS_BR[estado] || { latitude: -14.235, longitude: -51.9253, zoom: 4 };
