@@ -7,10 +7,10 @@ const configuracaoPath = garantirArquivo("painel.json", "data/painel.json", {});
 // Para preparar o bot para outra empresa, altere somente este bloco.
 const LOCALIDADE_EMPRESA = Object.freeze({
   estado: "SE",
-  municipio: "Estância",
+  municipio: "Aracaju",
   // Centro inicial da cidade; o endereço exato é escolhido no painel.
-  latitudeMapaInicial: -11.2659,
-  longitudeMapaInicial: -37.4484,
+  latitudeMapaInicial: -10.9472,
+  longitudeMapaInicial: -37.0731,
   zoomMapaInicial: 15
 });
 

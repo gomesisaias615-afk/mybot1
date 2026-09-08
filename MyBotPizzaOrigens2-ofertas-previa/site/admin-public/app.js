@@ -1,5 +1,6 @@
 const $ = seletor => document.querySelector(seletor);
 const estado = { dados: null, tipoEstoque: "pizzas", busca: "", filtro: "todos" };
+const ZOOM_INICIAL_PIZZARIA = 15;
 
 async function api(url, opcoes = {}) {
   const resposta = await fetch(url, {
@@ -145,7 +146,7 @@ function render() {
         ? {
             latitude: latitudeMapaInicial,
             longitude: longitudeMapaInicial,
-            zoom: Math.min(18, Math.max(4, Number(entrega.zoomMapaInicial) || 15))
+            zoom: ZOOM_INICIAL_PIZZARIA
           }
         : null;
     const latitude = Number(entrega.latitudePizzaria);
@@ -315,8 +316,8 @@ function coordenadasPizzariaAtuais() {
     Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
   // Mesmo com endereço já salvo, mantenha o enquadramento inicial escolhido.
   // Antes este trecho forçava 19 e ignorava o zoom configurado.
-  if (possuiCoordenadas) return { latitude, longitude, zoom: centroMapaConfigurado?.zoom || 15 };
-  if (centroMapaConfigurado) return { ...centroMapaConfigurado };
+  if (possuiCoordenadas) return { latitude, longitude, zoom: ZOOM_INICIAL_PIZZARIA };
+  if (centroMapaConfigurado) return { ...centroMapaConfigurado, zoom: ZOOM_INICIAL_PIZZARIA };
   const estado = String($("#estadoAtendido").value || "").toUpperCase();
   return CENTROS_ESTADOS_BR[estado] || { latitude: -14.235, longitude: -51.9253, zoom: 4 };
 }
