@@ -81,7 +81,8 @@ const detalhesPizzas = {
 
 function montarCardapio() {
   const dados = hamburgueria.catalogoPublico();
-  return { categorias: hamburgueria.categorias, produtos: dados.produtos.map(item => ({ ...item, tipo: item.categoria, ingredientes: item.descricao, disponivel: item.disponivel !== false })), adicionais: dados.adicionais, configuracao: { categorias: Object.fromEntries(hamburgueria.categorias.map(categoria => [categoria, true])), pizzaria: { nome: "Nova hamburgueria", slogan: "" } }, atualizadoEm: new Date().toISOString() };
+  const preparar = item => ({ ...item, precoOriginal: item.promocao ? item.precoOriginal || item.preco : item.preco, tipo: item.categoria, ingredientes: item.descricao, disponivel: item.disponivel !== false });
+  return { categorias: hamburgueria.categorias, produtos: [...dados.produtos, ...dados.adicionais].map(preparar), adicionais: dados.adicionais.map(preparar), configuracao: { categorias: Object.fromEntries(hamburgueria.categorias.map(categoria => [categoria, true])), pizzaria: { nome: "Nova hamburgueria", slogan: "" } }, atualizadoEm: new Date().toISOString() };
   /* legado de pizzaria mantido para instalações antigas.
   const catalogoPrecos = precosService.catalogo();
   const precosPizzas = catalogoPrecos.pizzas;

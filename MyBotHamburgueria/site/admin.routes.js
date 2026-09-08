@@ -185,6 +185,30 @@ router.delete("/api/painel/hamburgueria/itens/:id", exigirAutenticacao, (req,res
 router.post("/api/painel/hamburgueria/adicionais", exigirAutenticacao, (req,res)=>{try{res.status(201).json(catalogoHamburgueria.adicionar(req.body,true))}catch(erro){res.status(400).json({erro:erro.message})}});
 router.delete("/api/painel/hamburgueria/adicionais/:id", exigirAutenticacao, (req,res)=>{try{res.json(catalogoHamburgueria.remover(req.params.id,true))}catch(erro){res.status(404).json({erro:erro.message})}});
 router.patch("/api/painel/hamburgueria/estoque/:id", exigirAutenticacao, (req,res)=>{try{res.json(catalogoHamburgueria.atualizarDisponibilidade(req.params.id,req.body?.disponivel,Boolean(req.body?.adicional)))}catch(erro){res.status(404).json({erro:erro.message})}});
+router.patch("/api/painel/hamburgueria/itens/:id", exigirAutenticacao, (req, res) => {
+  try { res.json(catalogoHamburgueria.atualizar(req.params.id, req.body, false)); }
+  catch (erro) { res.status(400).json({ erro: erro.message }); }
+});
+router.patch("/api/painel/hamburgueria/adicionais/:id", exigirAutenticacao, (req, res) => {
+  try { res.json(catalogoHamburgueria.atualizar(req.params.id, req.body, true)); }
+  catch (erro) { res.status(400).json({ erro: erro.message }); }
+});
+router.put("/api/painel/hamburgueria/imagens/:id", exigirAutenticacao, (req, res) => {
+  try { res.json(catalogoHamburgueria.salvarImagem(req.params.id, req.body?.imagem, Boolean(req.body?.adicional))); }
+  catch (erro) { res.status(400).json({ erro: erro.message }); }
+});
+router.delete("/api/painel/hamburgueria/imagens/:id", exigirAutenticacao, (req, res) => {
+  try { res.json(catalogoHamburgueria.salvarImagem(req.params.id, "", String(req.query?.adicional) === "1")); }
+  catch (erro) { res.status(400).json({ erro: erro.message }); }
+});
+router.put("/api/painel/hamburgueria/promocoes/:id", exigirAutenticacao, (req, res) => {
+  try { res.json(catalogoHamburgueria.salvarPromocao(req.params.id, req.body, Boolean(req.body?.adicional))); }
+  catch (erro) { res.status(400).json({ erro: erro.message }); }
+});
+router.delete("/api/painel/hamburgueria/promocoes/:id", exigirAutenticacao, (req, res) => {
+  try { res.json(catalogoHamburgueria.removerPromocao(req.params.id, String(req.query?.adicional) === "1")); }
+  catch (erro) { res.status(400).json({ erro: erro.message }); }
+});
 
 // Cria um link temporário, compartilhável apenas por quem o recebeu, para a
 // imagem da ficha. Isso permite encaminhar a ficha no WhatsApp Web sem anexar
@@ -362,81 +386,13 @@ router.get("/cardapio/imagem/:tipo/:chave", (req, res) => {
   }
 });
 
-router.get("/api/painel/imagens", exigirAutenticacao, (req, res) => {
-  const catalogo = precos.catalogo();
-  const pizzas = Object.keys(catalogo.pizzas || {}).map(chave => ({ tipo: "pizzas", chave, nome: chave, imagem: imagensProdutos.urlImagem("pizzas", chave) }));
-  const bebidas = Object.entries(catalogo.nomesBebidas || {}).map(([chave, dados]) => ({ tipo: "bebidas", chave, nome: dados.nome || chave, imagem: imagensProdutos.urlImagem("bebidas", chave) }));
-  res.json([...pizzas, ...bebidas]);
-});
-router.put("/api/painel/imagens/:tipo/:chave", exigirAutenticacao, (req, res) => {
-  try {
-    const item = imagensProdutos.salvarImagem(req.params.tipo, req.params.chave, req.body?.imagem);
-    res.json({ sucesso: true, imagem: imagensProdutos.urlImagem(req.params.tipo, req.params.chave), atualizadoEm: item.atualizadoEm });
-  } catch (erro) {
-    res.status(400).json({ erro: erro.message });
-  }
-});
-router.delete("/api/painel/imagens/:tipo/:chave", exigirAutenticacao, (req, res) => {
-  try {
-    imagensProdutos.removerImagem(req.params.tipo, req.params.chave);
-    res.sendStatus(204);
-  } catch (erro) {
-    res.status(400).json({ erro: erro.message });
-  }
-});
-
 router.get("/api/painel/dados", exigirAutenticacao, (req, res) => {
   res.json(obterDadosPainel());
 });
-
-router.post("/api/painel/catalogo/item", exigirAutenticacao, (req,res)=>{try{
-  const tipo=String(req.body?.tipo||""),nome=String(req.body?.nome||"").trim(),categoria=String(req.body?.categoria||""),ingredientes=String(req.body?.ingredientes||"").trim();
-  if(!nome||nome.length>80)throw Error("Informe o nome do item.");
-  const ler=p=>JSON.parse(fs.readFileSync(p,"utf8")),salvar=(p,d)=>fs.writeFileSync(p,JSON.stringify(d,null,2));
-  if(tipo==="pizza"){
-    if(!["tradicionais","especiais","doces"].includes(categoria))throw Error("Escolha a categoria da pizza.");
-    if(!ingredientes||ingredientes.length>500)throw Error("Informe os ingredientes da pizza (até 500 caracteres).");
-    const valores=req.body?.precos||{},tamanhos={};
-    for(const tamanho of ["P","M","G","F"]){const valor=Number(valores[tamanho]);if(!Number.isFinite(valor)||valor<=0)throw Error(`Informe um preço válido para o tamanho ${tamanho}.`);tamanhos[tamanho]=valor}
-    const p=garantirArquivo("precospizzas.json","data/precospizzas.json",{}),c=garantirArquivo("configuracaoCardapio.json","data/configuracaoCardapio.json",{}),e=garantirArquivo("estoque.json","services/monitoramento/estoque.json",{pizzas:{},bebidas:{}}),pre=ler(p),conf=ler(c),est=ler(e);
-    if(pre[nome])throw Error("Já existe uma pizza com esse nome.");pre[nome]=tamanhos;conf.pizzasPorCategoria[categoria]||=[];conf.pizzasPorCategoria[categoria].push(nome);est.pizzas=est.pizzas||{};est.pizzas[nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/-/g," ").replace(/\s+/g," ").trim()]=1;salvar(p,pre);salvar(c,conf);salvar(e,est);precos.atualizarIngredientesPizza(nome,ingredientes)
-  }else if(tipo==="bebida"){
-    const preco=Number(req.body?.preco);if(!Number.isFinite(preco)||preco<=0)throw Error("Informe um preço válido.");
-    const k=nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_"),p=garantirArquivo("precosbebidas.json","data/precosbebidas.json",{}),n=garantirArquivo("nomesbebidas.json","data/nomesbebidas.json",{}),e=garantirArquivo("estoque.json","services/monitoramento/estoque.json",{pizzas:{},bebidas:{}}),pre=ler(p),nom=ler(n),est=ler(e);
-    if(pre[k])throw Error("Já existe uma bebida com esse nome.");pre[k]=preco;nom[k]={nome,aliases:[k.replaceAll("_"," ")]};est.bebidas=est.bebidas||{};est.bebidas[k]=1;salvar(p,pre);salvar(n,nom);salvar(e,est)
-  }else throw Error("Tipo inválido.");res.json({ok:true})
-}catch(e){res.status(400).json({erro:e.message})}});
-router.get("/api/painel/precos", exigirAutenticacao, (req,res)=>res.json(precos.catalogo()));
-router.get("/api/painel/ingredientes", exigirAutenticacao, (req,res)=>res.json(montarCardapio().pizzas.map(({nome,ingredientes})=>({nome,ingredientes}))));
-router.patch("/api/painel/ingredientes/pizza", exigirAutenticacao, (req,res)=>{try{res.json({nome:String(req.body?.nome||""),ingredientes:precos.atualizarIngredientesPizza(String(req.body?.nome||""),req.body?.ingredientes)})}catch(e){res.status(400).json({erro:e.message})}});
-router.patch("/api/painel/precos/pizza", exigirAutenticacao, (req,res)=>{try{res.json({preco:precos.atualizarPrecoPizza(String(req.body?.nome||""),String(req.body?.tamanho||""),req.body?.preco)})}catch(e){res.status(400).json({erro:e.message})}});
-router.patch("/api/painel/precos/bebida", exigirAutenticacao, (req,res)=>{try{res.json({preco:precos.atualizarPrecoBebida(String(req.body?.chave||""),req.body?.preco)})}catch(e){res.status(400).json({erro:e.message})}});
-router.put("/api/painel/promocoes", exigirAutenticacao, (req,res)=>{try{const dados=req.body||{};if(String(dados.tipo)==="pizza"){const estoque=recarregarEstoque();const chave=String(dados.chave||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();if(Number(estoque.pizzas?.[chave]||0)<=0)throw Error("Não é possível aplicar promoção em uma pizza indisponível.");}res.json(precos.salvarPromocao(dados))}catch(e){res.status(400).json({erro:e.message})}});
-router.delete("/api/painel/promocoes", exigirAutenticacao, (req,res)=>{try{res.json(precos.removerPromocao(String(req.body?.tipo||""),String(req.body?.chave||""),String(req.body?.tamanho||"")))}catch(e){res.status(400).json({erro:e.message})}});
 router.patch("/api/painel/configuracao", exigirAutenticacao, (req, res) => {
   res.json(atualizarConfiguracaoPainel(req.body || {}));
 });
 
-router.patch("/api/painel/estoque", exigirAutenticacao, (req, res) => {
-  const tipo = String(req.body?.tipo || "");
-  const chave = String(req.body?.chave || "");
-  const quantidade = Number(req.body?.quantidade);
-  const estoque = recarregarEstoque();
-  if (!["pizzas", "bebidas"].includes(tipo) || !Object.prototype.hasOwnProperty.call(estoque[tipo], chave)) {
-    return res.status(404).json({ erro: "Produto não encontrado." });
-  }
-  if (!Number.isInteger(quantidade) || quantidade < 0 || quantidade > 10000) {
-    return res.status(400).json({ erro: "Informe uma quantidade entre 0 e 10.000." });
-  }
-  const atual = Number(estoque[tipo][chave]) || 0;
-  if (quantidade === atual) {
-    return res.json({ tipo, chave, anterior: atual, atual });
-  }
-
-  // Sempre grava no mesmo arquivo persistente usado pelo bot e pelo cardápio.
-  const atualizada = definirQuantidadeProduto(tipo, chave, quantidade);
-  res.json({ tipo, chave, anterior: atual, atual: atualizada });
-});
 
 function mensagemStatusCliente(pedido, status) {
   const id = pedido.id;

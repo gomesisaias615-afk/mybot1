@@ -21,7 +21,7 @@ function identificarOpcaoMenu(msg, permitirNumeros = false) {
     .replace(/^[^a-z0-9]+/i, "");
 
   if (["fazer pedido", "pedido"].includes(texto)) return "pedido";
-  if (["instagram", "instagram da pizzaria"].includes(texto)) return "instagram";
+  if (["instagram", "instagram da hamburgueria", "instagram da empresa"].includes(texto)) return "instagram";
   if (["ofertas", "oferta", "promocoes", "promocao", "grupo de promocoes"].includes(texto)) return "promocoes";
   if (["mybot", "contato mybot", "entrar em contato com a mybot"].includes(texto)) return "contato";
 
@@ -51,7 +51,7 @@ async function executarOpcaoMenu({
 
   if (opcao === "instagram") {
     if (!temInstagram) {
-      await msg.reply("📸 O Instagram da pizzaria ainda não foi configurado.");
+      await msg.reply("📸 O Instagram da hamburgueria ainda não foi configurado.");
       return true;
     }
     await msg.reply(textos.instagram, undefined, { linkPreview: true });

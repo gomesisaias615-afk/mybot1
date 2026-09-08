@@ -35,7 +35,7 @@ Olá! 👋
 
 Seja bem-vindo(a) à *${nomePizzaria}*!
 
-🤖 *Eu sou o assistente virtual da pizzaria*
+🤖 *Eu sou o assistente virtual da hamburgueria*
 e vou te atender por aqui.
 
 🍕 *Vou te ajudar a fazer seu pedido*
@@ -53,7 +53,7 @@ Digite o número ou toque em uma opção.`,
 `📍 Nossa localização...`,
 
   instagram:
-`📸 *Instagram da pizzaria*
+`📸 *Instagram da hamburgueria*
 
 Acompanhe nossas novidades e promoções:
 ${instagramPizzaria}`,
@@ -124,7 +124,7 @@ Escolha as pizzas desejadas e, depois:
   comoPedirHamburguer:
 `🍔 *COMO FAZER SEU PEDIDO*
 
-Escolha hambúrgueres, combos, acompanhamentos e bebidas no cardápio digital. Depois envie aqui a quantidade e o nome.
+Escolha hambúrgueres, combos, complementos e bebidas no cardápio digital. Depois envie aqui a quantidade e o nome.
 
 Exemplos:
 \`2 Hambúrgueres e 1 Coca-Cola\`
@@ -141,7 +141,7 @@ ${linkCardapioDigital}`,
   perguntarBebida:
 `🥤 Deseja adicionar uma bebida?
 
-Uma bebida gelada combina perfeitamente com sua pizza 😋🍕
+Uma bebida gelada combina perfeitamente com seu pedido 😋🍔
 
 1️⃣ Sim
 2️⃣ Não`,

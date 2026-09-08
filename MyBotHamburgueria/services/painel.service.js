@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { garantirArquivo } = require("./dadosPersistentes.service");
+const catalogoHamburgueria = require("./hamburgueriaCatalogo.service");
 const configuracaoPath = garantirArquivo("painel.json", "data/painel.json", {});
 
 // Para preparar o bot para outra empresa, altere somente este bloco.
@@ -182,7 +183,10 @@ function obterDadosPainel() {
     fs.writeFileSync(pedidosPath, JSON.stringify(pedidos, null, 2), "utf8");
     fs.writeFileSync(enderecosPath, JSON.stringify(enderecos, null, 2), "utf8");
   }
-  const estoque = lerJson(garantirArquivo("estoque.json", "services/monitoramento/estoque.json", { pizzas: {}, bebidas: {} }), { pizzas: {}, bebidas: {} });
+  const catalogo = catalogoHamburgueria.ler();
+  const estoque = Object.fromEntries(["hamburgueres", "combos", "complementos", "bebidas"].map(categoria => [categoria,
+    [...catalogo.produtos, ...catalogo.adicionais].filter(item => item.categoria === categoria)
+  ]));
 
   return {
     configuracao: obterConfiguracaoPainel(),
