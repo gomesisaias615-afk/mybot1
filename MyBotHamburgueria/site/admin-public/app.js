@@ -214,7 +214,7 @@ document.addEventListener("change", async evento => {
   } catch (erro) { toast(erro.message); }
 });
 
-$("#loginForm").addEventListener("submit", async evento => { evento.preventDefault(); try { await api("/api/painel/entrar", { method: "POST", body: JSON.stringify({ token: $("#token").value }) }); $("#login").classList.add("oculto"); $("#aplicacao").classList.remove("oculto"); await carregar(); } catch (erro) { $("#loginErro").textContent = erro.message; } });
+$("#loginForm").addEventListener("submit", async evento => { evento.preventDefault(); try { await api("/api/painel/entrar", { method: "POST", body: JSON.stringify({ token: $("#token").value }) }); sessionStorage.setItem("mybot_painel_aba_autorizada", "1"); $("#login").classList.add("oculto"); $("#aplicacao").classList.remove("oculto"); await carregar(); } catch (erro) { $("#loginErro").textContent = erro.message; } });
 $("#atualizar").addEventListener("click", () => carregar().then(() => toast("Painel atualizado.")).catch(e => toast(e.message)));
 // Indicador somente visual: o status do bot não é alterado pelo painel.
 $("#salvarHorario").addEventListener("click", async () => {
@@ -769,7 +769,7 @@ $("#salvarEntrega").addEventListener("click", async () => {
 
 $("#filtroPedidos").addEventListener("change", e => { estado.filtro = e.target.value; renderPedidos(); });
 $("#buscarEstoque").addEventListener("input", e => { estado.busca = e.target.value.toLowerCase().trim(); renderEstoque(); });
-$("#sair").addEventListener("click", async () => { await api("/api/painel/sair", { method: "POST" }); location.reload(); });
+$("#sair").addEventListener("click", async () => { sessionStorage.removeItem("mybot_painel_aba_autorizada"); await api("/api/painel/sair", { method: "POST" }); location.reload(); });
 
 let validacaoSessaoEmAndamento;
 
@@ -786,6 +786,7 @@ function mostrarLoginPainel() {
 async function validarSessaoPainel({ atualizarDados = true } = {}) {
   if (validacaoSessaoEmAndamento) return validacaoSessaoEmAndamento;
 
+  if (!sessionStorage.getItem("mybot_painel_aba_autorizada")) { mostrarLoginPainel(); return Promise.resolve(false); }
   ocultarPainelDuranteValidacao();
   validacaoSessaoEmAndamento = (async () => {
     try {
