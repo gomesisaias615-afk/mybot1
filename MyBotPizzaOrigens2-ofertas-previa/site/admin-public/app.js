@@ -131,20 +131,12 @@ function render() {
     $("#enderecoPizzaria").value = "";
     $("#latitudePizzaria").value = entrega.latitudePizzaria ?? "";
     $("#longitudePizzaria").value = entrega.longitudePizzaria ?? "";
-    const estadoConfigurado = String(entrega.estadoAtendido || "").trim().toUpperCase();
-    const municipioConfigurado = String(entrega.cidadeAtendida || "").trim();
-    $("#estadoAtendido").value = estadoConfigurado;
-    $("#cidadeAtendida").value = municipioConfigurado;
+    $("#estadoAtendido").value = entrega.estadoAtendido || "SE";
+    $("#cidadeAtendida").value = entrega.cidadeAtendida || "Estância";
     $("#municipioAtendimentoResumo").textContent =
-      municipioConfigurado && estadoConfigurado
-        ? municipioConfigurado + " — " + estadoConfigurado
-        : "Localização ainda não definida";
-    // Number(null) vira 0 em JavaScript. Isso levava o mapa para 0,0,
-    // no oceano, quando ainda não havia uma localização salva.
-    const latitudeMapaTexto = String(entrega.latitudeMapaInicial ?? "").trim();
-    const longitudeMapaTexto = String(entrega.longitudeMapaInicial ?? "").trim();
-    const latitudeMapaInicial = latitudeMapaTexto ? Number(latitudeMapaTexto) : NaN;
-    const longitudeMapaInicial = longitudeMapaTexto ? Number(longitudeMapaTexto) : NaN;
+      (entrega.cidadeAtendida || "Estância") + " — " + (entrega.estadoAtendido || "SE");
+    const latitudeMapaInicial = Number(entrega.latitudeMapaInicial);
+    const longitudeMapaInicial = Number(entrega.longitudeMapaInicial);
     centroMapaConfigurado =
       Number.isFinite(latitudeMapaInicial) && Number.isFinite(longitudeMapaInicial)
         ? {
@@ -394,10 +386,9 @@ function criarIconeCentroMapa() {
 
 function adicionarMapaBase(mapa) {
   let reservaAtivada = false;
-  // Usa o proxy do próprio sistema. Ele evita bloqueios do navegador a imagens
-  // externas e mantém o mapa funcionando também quando o OpenStreetMap oscila.
   const principal = L.tileLayer("/api/mapa/tiles/{z}/{x}/{y}.png", {
     maxZoom: 19,
+    crossOrigin: true,
     updateWhenIdle: false,
     keepBuffer: 4,
     attribution: "&copy; OpenStreetMap"

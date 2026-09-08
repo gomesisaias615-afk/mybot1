@@ -6,12 +6,11 @@ const configuracaoPath = garantirArquivo("painel.json", "data/painel.json", {});
 
 // Para preparar o bot para outra empresa, altere somente este bloco.
 const LOCALIDADE_EMPRESA = Object.freeze({
-  estado: "SE",
-  municipio: "Estância",
-  // Centro apenas para abrir o mapa; o endereço exato continua sendo escolhido no painel.
-  latitudeMapaInicial: -11.2659,
-  longitudeMapaInicial: -37.4484,
-  zoomMapaInicial: 7
+  estado: "",
+  municipio: "",
+  latitudeMapaInicial: null,
+  longitudeMapaInicial: null,
+  zoomMapaInicial: 12
 });
 
 const PADRAO = {
@@ -84,14 +83,12 @@ function normalizarConfiguracaoEntrega(valor = {}) {
     enderecoPizzaria: String(valor.enderecoPizzaria || base.enderecoPizzaria).trim(),
     latitudePizzaria: coordenadaEntrega(valor.latitudePizzaria, base.latitudePizzaria, -90, 90),
     longitudePizzaria: coordenadaEntrega(valor.longitudePizzaria, base.longitudePizzaria, -180, 180),
-    // Endereço e pino do mapa continuam sendo configurados diretamente no painel.
+    // Estado e município são definidos na implantação, não pelo atendente.
     estadoAtendido: base.estadoAtendido,
     cidadeAtendida: base.cidadeAtendida,
     latitudeMapaInicial: coordenadaEntrega(valor.latitudeMapaInicial, base.latitudeMapaInicial, -90, 90),
     longitudeMapaInicial: coordenadaEntrega(valor.longitudeMapaInicial, base.longitudeMapaInicial, -180, 180),
-    // Não reutiliza um zoom antigo salvo no painel: o mapa deve sempre abrir
-    // no enquadramento padrão da cidade configurada.
-    zoomMapaInicial: base.zoomMapaInicial
+    zoomMapaInicial: numeroEntrega(valor.zoomMapaInicial, base.zoomMapaInicial, 2)
   };
 }
 

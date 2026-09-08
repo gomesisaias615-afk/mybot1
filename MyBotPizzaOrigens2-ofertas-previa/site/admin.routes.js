@@ -25,17 +25,6 @@ const LIMITE_CACHE_LOCALIZACAO = 300;
 const ARQUIVO_FICHAS_PUBLICAS = garantirArquivo("fichasEntregaCompartilhadas.json", "data/fichasEntregaCompartilhadas.json", {});
 const DURACAO_FICHA_PUBLICA = 7 * 24 * 60 * 60 * 1000;
 
-function escaparHtml(valor) {
-  return String(valor ?? "").replace(/[&<>"']/g, caractere => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[caractere]));
-}
-
-function urlPublica(req) {
-  const protocolo = String(req.get("x-forwarded-proto") || req.protocol || "https").split(",")[0].trim();
-  return String(process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || `${protocolo}://${req.get("host")}`).replace(/\/$/, "");
-}
-
 function escaparSvg(valor) {
   return String(valor ?? "").replace(/[&<>\"']/g, caractere => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&apos;"
@@ -134,16 +123,24 @@ router.get("/painel/acesso/:token", (req, res) => {
   res.redirect(302, "/painel/");
 });
 
-// WhatsApp, Facebook e outras redes leem estes metadados antes de abrir o
-// painel. A rota dinâmica garante uma imagem absoluta, verde e pública.
-router.get(["/painel", "/painel/"], (req, res) => {
-  const origem = urlPublica(req);
-  const titulo = "MyBot | Painel Administrativo";
-  const descricao = "Acesse o painel administrativo MyBot para acompanhar pedidos e gerenciar sua empresa.";
-  const metadados = `\n  <meta property="og:type" content="website">\n  <meta property="og:title" content="${escaparHtml(titulo)}">\n  <meta property="og:description" content="${escaparHtml(descricao)}">\n  <meta property="og:url" content="${origem}/painel/">\n  <meta property="og:image" content="${origem}/painel/mybot-logo-verde.png">\n  <meta property="og:image:secure_url" content="${origem}/painel/mybot-logo-verde.png">\n  <meta property="og:image:type" content="image/png">\n  <meta property="og:image:width" content="1254">\n  <meta property="og:image:height" content="1254">\n  <meta property="og:site_name" content="MyBot">\n  <meta name="twitter:card" content="summary_large_image">\n  <meta name="twitter:title" content="${escaparHtml(titulo)}">\n  <meta name="twitter:description" content="${escaparHtml(descricao)}">\n  <meta name="twitter:image" content="${origem}/painel/mybot-logo-verde.png">`;
-  const pagina = fs.readFileSync(path.join(publicDir, "index.html"), "utf8").replace("</head>", `${metadados}\n</head>`);
-  res.set("Cache-Control", "no-store").type("html").send(pagina);
-});
+function urlPublica(req) {
+  const configurada = String(process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "").trim().replace(/\/$/, "");
+  return configurada || `${req.protocol}://${req.get("host")}`;
+}
+
+function painelComPrevia(req, res) {
+  const arquivo = path.join(publicDir, "index.html");
+  const url = urlPublica(req);
+  const previa = `\n  <meta property="og:type" content="website">\n  <meta property="og:title" content="MyBot | Painel administrativo">\n  <meta property="og:description" content="Acesse o painel administrativo do MyBot.">\n  <meta property="og:url" content="${url}/painel/">\n  <meta property="og:image" content="${url}/painel/mybot-logo-verde.png">\n  <meta property="og:image:type" content="image/png">\n  <meta property="og:image:alt" content="MyBot">\n  <meta name="twitter:card" content="summary_large_image">`;
+  try {
+    const html = fs.readFileSync(arquivo, "utf8").replace("</head>", `${previa}\n</head>`);
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate").type("html").send(html);
+  } catch {
+    res.sendFile(arquivo);
+  }
+}
+
+router.get(["/painel/", "/painel/index.html"], painelComPrevia);
 
 router.use("/painel", express.static(publicDir, {
   index: "index.html",

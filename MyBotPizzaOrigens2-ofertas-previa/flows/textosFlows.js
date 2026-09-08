@@ -15,6 +15,12 @@ const temInstagram = /^https?:\/\//i.test(instagramPizzaria);
 const temGrupoPromocoes = /^https?:\/\//i.test(grupoWhatsApp);
 const { obterIdentidade } = require("../services/identidade.service");
 const nomePizzaria = obterIdentidade().nome;
+const opcoesMenu = [
+  "1️⃣ *Fazer pedido*",
+  temInstagram ? "2️⃣ *Instagram*" : "",
+  temGrupoPromocoes ? "3️⃣ *Ofertas*" : "",
+  "4️⃣ *Contato MyBot*"
+].filter(Boolean).join("\n");
 module.exports = {
   linkCardapioDigital,
 
@@ -39,10 +45,7 @@ de forma rápida e simples.
 
 Escolha uma opção:
 
-1️⃣ *Fazer pedido*
-2️⃣ *Instagram*
-3️⃣ *Ofertas*
-4️⃣ *Contato MyBot*
+${opcoesMenu}
 
 Digite o número ou toque em uma opção.`,
 

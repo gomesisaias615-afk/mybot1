@@ -70,8 +70,8 @@ const estadosBrasil = [
 
 function montarEstados() {
   $("estadoEntrega").innerHTML = estadosBrasil.map(([sigla,nome]) => `<option value="${sigla}">${nome}</option>`).join("");
-  $("estadoEntrega").value = configuracaoEntrega.estadoAtendido || "";
-  $("cidadeEntrega").value = configuracaoEntrega.cidadeAtendida || "";
+  $("estadoEntrega").value = configuracaoEntrega.estadoAtendido || "SE";
+  $("cidadeEntrega").value = configuracaoEntrega.cidadeAtendida || "Estância";
 }
 
 function atualizarMensagemTaxaEntregaInicial() {
@@ -745,3 +745,4 @@ async function iniciar() {
 }
 
 iniciar();
+
