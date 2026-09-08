@@ -6,7 +6,7 @@ const arquivo = garantirArquivo("identidade.json", "data/identidade.json", {});
 const identidadeInicialPath = path.join(__dirname, "..", "data", "identidade.json");
 const logo = path.join(diretorioDados, "identidade-logo.png");
 const padrao = {
-  nome: "Nova pizzaria",
+  nome: "Nova hamburgueria",
   logo: "/cardapio/mascote-saborear.png",
   cores: {
     primaria: "#15965a",
