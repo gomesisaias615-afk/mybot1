@@ -175,24 +175,11 @@ router.post("/api/painel/sair", exigirAutenticacao, (req, res) => {
   res.sendStatus(204);
 });
 
-// Catálogo da hamburgueria: separado do legado de pizzaria para não exigir tamanhos.
-router.get("/api/painel/hamburgueria/catalogo", exigirAutenticacao, (req, res) => res.json(catalogoHamburgueria.ler()));
-router.post("/api/painel/hamburgueria/itens", exigirAutenticacao, (req, res) => {
-  try { res.status(201).json(catalogoHamburgueria.adicionar(req.body, false)); }
-  catch (erro) { res.status(400).json({ erro: erro.message }); }
-});
-router.delete("/api/painel/hamburgueria/itens/:id", exigirAutenticacao, (req, res) => {
-  try { res.json(catalogoHamburgueria.remover(req.params.id, false)); }
-  catch (erro) { res.status(404).json({ erro: erro.message }); }
-});
-router.post("/api/painel/hamburgueria/adicionais", exigirAutenticacao, (req, res) => {
-  try { res.status(201).json(catalogoHamburgueria.adicionar(req.body, true)); }
-  catch (erro) { res.status(400).json({ erro: erro.message }); }
-});
-router.delete("/api/painel/hamburgueria/adicionais/:id", exigirAutenticacao, (req, res) => {
-  try { res.json(catalogoHamburgueria.remover(req.params.id, true)); }
-  catch (erro) { res.status(404).json({ erro: erro.message }); }
-});
+router.get("/api/painel/hamburgueria/catalogo", exigirAutenticacao, (req,res)=>res.json(catalogoHamburgueria.ler()));
+router.post("/api/painel/hamburgueria/itens", exigirAutenticacao, (req,res)=>{try{res.status(201).json(catalogoHamburgueria.adicionar(req.body,false))}catch(erro){res.status(400).json({erro:erro.message})}});
+router.delete("/api/painel/hamburgueria/itens/:id", exigirAutenticacao, (req,res)=>{try{res.json(catalogoHamburgueria.remover(req.params.id,false))}catch(erro){res.status(404).json({erro:erro.message})}});
+router.post("/api/painel/hamburgueria/adicionais", exigirAutenticacao, (req,res)=>{try{res.status(201).json(catalogoHamburgueria.adicionar(req.body,true))}catch(erro){res.status(400).json({erro:erro.message})}});
+router.delete("/api/painel/hamburgueria/adicionais/:id", exigirAutenticacao, (req,res)=>{try{res.json(catalogoHamburgueria.remover(req.params.id,true))}catch(erro){res.status(404).json({erro:erro.message})}});
 
 // Cria um link temporário, compartilhável apenas por quem o recebeu, para a
 // imagem da ficha. Isso permite encaminhar a ficha no WhatsApp Web sem anexar

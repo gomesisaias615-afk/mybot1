@@ -25,8 +25,7 @@ function mostrarMenu(msg, user) {
 }
 
 const ESTADOS_TEXTO_LIVRE = new Set([
-  "pedido_hamburguer", "perguntar_adicionais", "pedido_adicionais",
-  "perguntar_observacao_hamburguer", "digitar_observacao_hamburguer",
+  "pedido_hamburguer", "perguntar_adicionais", "pedido_adicionais", "perguntar_observacao_hamburguer", "digitar_observacao_hamburguer",
   "confirmar_resumo", "conf_contato", "conf_rua", "conf_numero", "conf_bairro",
   "complemento_pergunta", "referencia_pergunta", "confirmar_endereco",
   "endereco_contato", "endereco_rua", "endereco_numero", "endereco_bairro",
