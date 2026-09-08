@@ -2,14 +2,16 @@ const fs = require("fs");
 const path = require("path");
 
 const { garantirArquivo } = require("./dadosPersistentes.service");
-const estoquePath = garantirArquivo("estoque.json", "services/monitoramento/estoque.json", { pizzas: {}, bebidas: {} });
+const estoquePath = garantirArquivo("estoque.json", "services/monitoramento/estoque.json", { pizzas: {}, bebidas: {}, acompanhamentos: {}, combos: {} });
 const precosPizzasPath = garantirArquivo("precospizzas.json", "data/precospizzas.json", {});
 const precosBebidasPath = garantirArquivo("precosbebidas.json", "data/precosbebidas.json", {});
 const nomesBebidasPath = garantirArquivo("nomesbebidas.json", "data/nomesbebidas.json", {});
 
 const estoque = {
   pizzas: {},
-  bebidas: {}
+  bebidas: {},
+  acompanhamentos: {},
+  combos: {}
 };
 
 function lerJson(caminho, padrao = {}) {
@@ -26,6 +28,8 @@ function chavePizza(nome) {
 function sincronizarCatalogo(dados) {
   dados.pizzas = dados.pizzas || {};
   dados.bebidas = dados.bebidas || {};
+  dados.acompanhamentos = dados.acompanhamentos || {};
+  dados.combos = dados.combos || {};
   let mudou = false;
   for (const nome of Object.keys(lerJson(precosPizzasPath))) {
     const chave = chavePizza(nome);
@@ -47,6 +51,8 @@ function recarregarEstoque() {
     if (sincronizarCatalogo(dados)) fs.writeFileSync(estoquePath, JSON.stringify(dados, null, 2), "utf8");
     estoque.pizzas = dados.pizzas || {};
     estoque.bebidas = dados.bebidas || {};
+    estoque.acompanhamentos = dados.acompanhamentos || {};
+    estoque.combos = dados.combos || {};
   } catch (err) {
     console.error("Erro ao carregar estoque:", err.message);
   }
@@ -75,10 +81,12 @@ function zerarProduto(nomeInformado) {
   const dados = JSON.parse(fs.readFileSync(estoquePath, "utf8"));
   dados.pizzas = dados.pizzas || {};
   dados.bebidas = dados.bebidas || {};
+  dados.acompanhamentos = dados.acompanhamentos || {};
+  dados.combos = dados.combos || {};
   const procurado = normalizar(nomeInformado);
   const encontrados = [];
 
-  for (const tipo of ["pizzas", "bebidas"]) {
+  for (const tipo of ["pizzas", "bebidas", "acompanhamentos", "combos"]) {
     for (const chave of Object.keys(dados[tipo])) {
       if (normalizar(chave) === procurado) encontrados.push({ tipo, chave });
     }
@@ -97,6 +105,8 @@ function atualizarProdutos(operacoes) {
   const dados = JSON.parse(fs.readFileSync(estoquePath, "utf8"));
   dados.pizzas = dados.pizzas || {};
   dados.bebidas = dados.bebidas || {};
+  dados.acompanhamentos = dados.acompanhamentos || {};
+  dados.combos = dados.combos || {};
   const aplicadas = [];
   for (const operacao of operacoes || []) {
     if (!Object.prototype.hasOwnProperty.call(dados[operacao.tipo] || {}, operacao.chave)) throw new Error("Item inexistente no estoque: " + operacao.chave);
@@ -111,7 +121,7 @@ function atualizarProdutos(operacoes) {
 }
 
 function definirQuantidadeProduto(tipo, chave, quantidade) {
-  if (!["pizzas", "bebidas"].includes(tipo)) throw new Error("Tipo de produto inválido.");
+  if (!["pizzas", "bebidas", "acompanhamentos", "combos"].includes(tipo)) throw new Error("Tipo de produto inválido.");
   const valor = Number(quantidade);
   if (!Number.isInteger(valor) || valor < 0 || valor > 10000) {
     throw new Error("A quantidade deve ser um número inteiro entre 0 e 10000.");
@@ -119,6 +129,8 @@ function definirQuantidadeProduto(tipo, chave, quantidade) {
   const dados = JSON.parse(fs.readFileSync(estoquePath, "utf8"));
   dados.pizzas = dados.pizzas || {};
   dados.bebidas = dados.bebidas || {};
+  dados.acompanhamentos = dados.acompanhamentos || {};
+  dados.combos = dados.combos || {};
   if (!Object.prototype.hasOwnProperty.call(dados[tipo], chave)) throw new Error("Produto não encontrado no estoque.");
   dados[tipo][chave] = valor;
   fs.writeFileSync(estoquePath, JSON.stringify(dados, null, 2), "utf8");

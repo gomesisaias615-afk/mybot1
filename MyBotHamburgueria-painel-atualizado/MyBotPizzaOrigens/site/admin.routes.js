@@ -410,7 +410,7 @@ router.patch("/api/painel/estoque", exigirAutenticacao, (req, res) => {
   const chave = String(req.body?.chave || "");
   const quantidade = Number(req.body?.quantidade);
   const estoque = recarregarEstoque();
-  if (!["pizzas", "bebidas"].includes(tipo) || !Object.prototype.hasOwnProperty.call(estoque[tipo], chave)) {
+  if (!["pizzas", "bebidas", "acompanhamentos", "combos"].includes(tipo) || !Object.prototype.hasOwnProperty.call(estoque[tipo], chave)) {
     return res.status(404).json({ erro: "Produto não encontrado." });
   }
   if (!Number.isInteger(quantidade) || quantidade < 0 || quantidade > 10000) {
