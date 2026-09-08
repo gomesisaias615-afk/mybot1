@@ -124,8 +124,11 @@ router.get("/painel/acesso/:token", (req, res) => {
 });
 
 function urlPublica(req) {
-  const configurada = String(process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "").trim().replace(/\/$/, "");
-  return configurada || `${req.protocol}://${req.get("host")}`;
+  // Para a prévia, use o domínio da requisição atual. Assim uma PUBLIC_URL
+  // antiga no Render não aponta a imagem para outro serviço.
+  const protocolo = String(req.get("x-forwarded-proto") || req.protocol || "https").split(",")[0].trim();
+  const host = String(req.get("x-forwarded-host") || req.get("host") || "").split(",")[0].trim();
+  return `${protocolo || "https"}://${host}`;
 }
 
 function painelComPrevia(req, res) {
