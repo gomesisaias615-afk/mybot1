@@ -1490,7 +1490,7 @@ document.addEventListener("click", async evento => {
 
 
 // Preços e promoções: alterações de preço só são gravadas ao clicar em Salvar.
-estado.catalogoPrecoAtual="acompanhamentos";
+estado.catalogoPrecoAtual="pizzas";
 estado.alteracoesPrecos={};
 const chavePreco=(tipo,chave,tamanho="")=>`${tipo}|${chave}|${tamanho}`;
 function nomePizzaPainel(nome){const sabor=String(nome||"").trim();return /^hambúrguer\s+de\s+/i.test(sabor)?sabor:`Hambúrguer de ${sabor}`}
