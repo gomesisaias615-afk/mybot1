@@ -11,6 +11,7 @@ const {
 } = require("../../services/groqCardapio.service");
 const { normalizar, respostaSim, respostaNao } = require("../../utils/texto");
 const { catalogo, ativa } = require("../../services/precos.service");
+const { oferecerAdicionais } = require("./adicionais.handler");
 
 function moeda(valor) { return `R$ ${Number(valor || 0).toFixed(2).replace(".", ",")}`; }
 function riscar(valor) { return String(valor).split("").map(caractere => caractere + "\u0336").join(""); }
@@ -189,15 +190,7 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
   }
 
   if (respostaSim(msg.body)) {
-    contexto.estados[user] = "perguntar_observacao_pizza";
-    await msg.reply(
-      `📝 *Deseja adicionar alguma observação às suas pizzas?*
-
-Você pode informar detalhes importantes, como retirar um ingrediente ou solicitar alguma preferência no preparo.
-
-1️⃣ Sim
-2️⃣ Não`
-    );
+    await oferecerAdicionais(msg, user, contexto);
     return true;
   }
 

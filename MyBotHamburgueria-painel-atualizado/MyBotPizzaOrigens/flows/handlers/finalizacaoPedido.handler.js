@@ -79,7 +79,8 @@ async function finalizarPedido({
     pizzas,
     bebidas,
     tipo,
-    contexto.observacoesPizza[user] || ""
+    contexto.observacoesPizza[user] || "",
+    contexto.adicionais[user] || []
   );
 
   salvarEnderecoPedido(

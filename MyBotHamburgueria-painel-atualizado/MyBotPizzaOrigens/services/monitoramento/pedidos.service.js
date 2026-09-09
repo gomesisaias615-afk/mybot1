@@ -17,7 +17,7 @@ function salvarJson(caminho, dados) {
   fs.writeFileSync(caminho, JSON.stringify(dados, null, 2), "utf8");
 }
 
-function calcularTotal(pizzas = [], bebidas = []) {
+function calcularTotal(pizzas = [], bebidas = [], adicionais = []) {
   let total = 0;
 
   for (const pizza of pizzas) {
@@ -26,6 +26,10 @@ function calcularTotal(pizzas = [], bebidas = []) {
 
   for (const bebida of bebidas) {
     total += bebida.quantidade * bebida.valor;
+  }
+
+  for (const adicional of adicionais) {
+    total += Number(adicional?.valor) || 0;
   }
 
   return total;
@@ -42,7 +46,7 @@ function gerarCodigoPedido(pedidos) {
   throw new Error("Não foi possível gerar um código de pedido disponível.");
 }
 
-function criarPedidoPendente(user, pizzas = [], bebidas = [], pagamento, observacaoPizzas = "") {
+function criarPedidoPendente(user, pizzas = [], bebidas = [], pagamento, observacaoPizzas = "", adicionais = []) {
   const pedidos = lerJson(pedidosPath, []);
 
   const pedido = {
@@ -51,9 +55,10 @@ function criarPedidoPendente(user, pizzas = [], bebidas = [], pagamento, observa
     status: "aguardando_pagamento",
     pagamento,
     observacaoPizzas,
+    adicionais,
     pizzas,
     bebidas,
-    total: calcularTotal(pizzas, bebidas),
+    total: calcularTotal(pizzas, bebidas, adicionais),
     criadoEm: new Date().toISOString(),
     pagoEm: null
   };
@@ -118,4 +123,3 @@ module.exports = {
   confirmarPedidoPagamentoLocal,
   confirmarPedidoTeste
 };
-
