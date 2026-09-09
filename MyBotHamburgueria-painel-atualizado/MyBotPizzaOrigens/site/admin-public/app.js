@@ -784,6 +784,12 @@ function mostrarLoginPainel() {
   $("#login").classList.remove("oculto");
 }
 
+// Não atualiza dados automaticamente enquanto o atendente está preenchendo
+// uma área de edição. Assim o texto digitado não é substituído pelo servidor.
+function podeAtualizarDadosAutomaticamente() {
+  return !["itens", "ingredientes", "precos", "imagens", "horario", "taxa", "adicionais"].includes(estado.guia);
+}
+
 async function validarSessaoPainel({ atualizarDados = true } = {}) {
   if (validacaoSessaoEmAndamento) return validacaoSessaoEmAndamento;
 
@@ -796,7 +802,7 @@ async function validarSessaoPainel({ atualizarDados = true } = {}) {
         return false;
       }
 
-      if (atualizarDados || !estado.dados) await carregar();
+      if ((atualizarDados && podeAtualizarDadosAutomaticamente()) || !estado.dados) await carregar();
       $("#login").classList.add("oculto");
       $("#aplicacao").classList.remove("oculto");
       return true;
@@ -827,7 +833,7 @@ document.addEventListener("visibilitychange", () => {
     validarSessaoPainel();
   }
 });
-setInterval(() => { if (!$("#aplicacao").classList.contains("oculto")) carregar().catch(() => {}); }, 30000);
+setInterval(() => { if (!$("#aplicacao").classList.contains("oculto") && podeAtualizarDadosAutomaticamente()) carregar().catch(() => {}); }, 30000);
 
 // Experiência operacional em guias e estoque por disponibilidade.
 estado.guia = "pedidos";
