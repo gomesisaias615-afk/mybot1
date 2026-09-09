@@ -22,6 +22,7 @@ const COOKIE_PAINEL = "mybot_painel_seguro";
 const cacheLocalizacaoReversa = new Map();
 const LIMITE_CACHE_LOCALIZACAO = 300;
 const ARQUIVO_FICHAS_PUBLICAS = garantirArquivo("fichasEntregaCompartilhadas.json", "data/fichasEntregaCompartilhadas.json", {});
+const ARQUIVO_ADICIONAIS = garantirArquivo("adicionais.json", "data/adicionais.json", {});
 const DURACAO_FICHA_PUBLICA = 7 * 24 * 60 * 60 * 1000;
 
 function escaparSvg(valor) {
@@ -415,6 +416,22 @@ router.get("/api/painel/precos", exigirAutenticacao, (req,res)=>{
 });
 router.get("/api/painel/ingredientes", exigirAutenticacao, (req,res)=>res.json(montarCardapio().pizzas.map(({nome,ingredientes,categoria})=>({nome,ingredientes,categoria}))));
 router.patch("/api/painel/ingredientes/pizza", exigirAutenticacao, (req,res)=>{try{res.json({nome:String(req.body?.nome||""),ingredientes:precos.atualizarIngredientesPizza(String(req.body?.nome||""),req.body?.ingredientes)})}catch(e){res.status(400).json({erro:e.message})}});
+router.get("/api/painel/adicionais", exigirAutenticacao, (req,res)=>{
+  const catalogo=precos.catalogo(),configuracao=JSON.parse(fs.readFileSync(garantirArquivo("configuracaoCardapio.json","data/configuracaoCardapio.json",{}),"utf8")),salvos=JSON.parse(fs.readFileSync(ARQUIVO_ADICIONAIS,"utf8"));
+  const categoriaPorNome=Object.fromEntries(Object.entries(configuracao.pizzasPorCategoria||{}).flatMap(([categoria,nomes])=>(nomes||[]).map(nome=>[nome,categoria])));
+  const tipo=nome=>categoriaPorNome[nome]==="especiais"?"acompanhamentos":categoriaPorNome[nome]==="doces"?"combos":"hamburgueres";
+  res.json(Object.keys(catalogo.pizzas||{}).map(nome=>({nome,tipo:tipo(nome),adicionais:Array.isArray(salvos[nome])?salvos[nome]:[]})));
+});
+router.put("/api/painel/adicionais", exigirAutenticacao, (req,res)=>{try{
+  const recebidos=req.body?.adicionais||{},catalogo=precos.catalogo(),permitidos=new Set(Object.keys(catalogo.pizzas||{})),salvar={};
+  for(const [produto,itens] of Object.entries(recebidos)){
+    if(!permitidos.has(produto))continue;
+    const limpos=(Array.isArray(itens)?itens:[]).map(item=>({nome:String(item?.nome||"").trim(),preco:Number(item?.preco)})).filter(item=>item.nome&&item.nome.length<=80&&Number.isFinite(item.preco)&&item.preco>0&&item.preco<=5000);
+    if(limpos.length>20)throw Error("Cada produto pode ter no máximo 20 adicionais.");
+    if(limpos.length)salvar[produto]=limpos;
+  }
+  fs.writeFileSync(ARQUIVO_ADICIONAIS,JSON.stringify(salvar,null,2),"utf8");res.json({ok:true,adicionais:salvar});
+}catch(e){res.status(400).json({erro:e.message})}});
 router.patch("/api/painel/precos/pizza", exigirAutenticacao, (req,res)=>{try{res.json({preco:precos.atualizarPrecoPizza(String(req.body?.nome||""),String(req.body?.tamanho||""),req.body?.preco)})}catch(e){res.status(400).json({erro:e.message})}});
 router.patch("/api/painel/precos/bebida", exigirAutenticacao, (req,res)=>{try{res.json({preco:precos.atualizarPrecoBebida(String(req.body?.chave||""),req.body?.preco)})}catch(e){res.status(400).json({erro:e.message})}});
 router.put("/api/painel/promocoes", exigirAutenticacao, (req,res)=>{try{const dados=req.body||{};if(String(dados.tipo)==="pizza"){const estoque=recarregarEstoque(),configuracao=JSON.parse(fs.readFileSync(garantirArquivo("configuracaoCardapio.json","data/configuracaoCardapio.json",{}),"utf8")),categoria=Object.entries(configuracao.pizzasPorCategoria||{}).find(([,nomes])=>(nomes||[]).includes(String(dados.chave||"")))?.[0],tipoEstoque=categoria==="especiais"?"acompanhamentos":categoria==="doces"?"combos":"pizzas",chave=String(dados.chave||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();if(Number(estoque[tipoEstoque]?.[chave]||0)<=0)throw Error("Não é possível aplicar promoção em um produto indisponível.");}res.json(precos.salvarPromocao(dados))}catch(e){res.status(400).json({erro:e.message})}});
