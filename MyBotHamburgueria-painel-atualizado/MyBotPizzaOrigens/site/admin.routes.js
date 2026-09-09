@@ -23,6 +23,7 @@ const cacheLocalizacaoReversa = new Map();
 const LIMITE_CACHE_LOCALIZACAO = 300;
 const ARQUIVO_FICHAS_PUBLICAS = garantirArquivo("fichasEntregaCompartilhadas.json", "data/fichasEntregaCompartilhadas.json", {});
 const ARQUIVO_ADICIONAIS = garantirArquivo("adicionais.json", "data/adicionais.json", {});
+const ARQUIVO_DESCRICOES_BEBIDAS = garantirArquivo("descricoesbebidas.json", "data/descricoesbebidas.json", {});
 const DURACAO_FICHA_PUBLICA = 7 * 24 * 60 * 60 * 1000;
 
 function escaparSvg(valor) {
@@ -402,7 +403,7 @@ router.post("/api/painel/catalogo/item", exigirAutenticacao, (req,res)=>{try{
   }else if(tipo==="bebida"){
     const preco=Number(req.body?.preco);if(!Number.isFinite(preco)||preco<=0)throw Error("Informe um preço válido.");
     const k=nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_"),p=garantirArquivo("precosbebidas.json","data/precosbebidas.json",{}),n=garantirArquivo("nomesbebidas.json","data/nomesbebidas.json",{}),e=garantirArquivo("estoque.json","services/monitoramento/estoque.json",{pizzas:{},bebidas:{}}),pre=ler(p),nom=ler(n),est=ler(e);
-    if(pre[k])throw Error("Já existe uma bebida com esse nome.");pre[k]=preco;nom[k]={nome,aliases:[k.replaceAll("_"," ")]};est.bebidas=est.bebidas||{};est.bebidas[k]=1;salvar(p,pre);salvar(n,nom);salvar(e,est)
+    if(pre[k])throw Error("Já existe uma bebida com esse nome.");if(!ingredientes||ingredientes.length>500)throw Error("Informe a descrição da bebida (até 500 caracteres).");const descricoes=ler(ARQUIVO_DESCRICOES_BEBIDAS);pre[k]=preco;nom[k]={nome,aliases:[k.replaceAll("_"," ")]};descricoes[k]=ingredientes;est.bebidas=est.bebidas||{};est.bebidas[k]=1;salvar(p,pre);salvar(n,nom);salvar(ARQUIVO_DESCRICOES_BEBIDAS,descricoes);salvar(e,est)
   }else throw Error("Tipo inválido.");res.json({ok:true})
 }catch(e){res.status(400).json({erro:e.message})}});
 router.get("/api/painel/precos", exigirAutenticacao, (req,res)=>{
@@ -414,13 +415,14 @@ router.get("/api/painel/precos", exigirAutenticacao, (req,res)=>{
   }
   res.json({...catalogo,categoriasProdutos});
 });
-router.get("/api/painel/ingredientes", exigirAutenticacao, (req,res)=>res.json(montarCardapio().pizzas.map(({nome,ingredientes,categoria})=>({nome,ingredientes,categoria}))));
+router.get("/api/painel/ingredientes", exigirAutenticacao, (req,res)=>{const bebidas=precos.catalogo().nomesBebidas||{},descricoes=JSON.parse(fs.readFileSync(ARQUIVO_DESCRICOES_BEBIDAS,"utf8"));res.json([...montarCardapio().pizzas.map(({nome,ingredientes,categoria})=>({nome,ingredientes,categoria,tipo:"pizza",chave:nome})),...Object.entries(bebidas).map(([chave,dados])=>({nome:dados.nome||chave,ingredientes:descricoes[chave]||"",categoria:"bebidas",tipo:"bebida",chave}))])});
 router.patch("/api/painel/ingredientes/pizza", exigirAutenticacao, (req,res)=>{try{res.json({nome:String(req.body?.nome||""),ingredientes:precos.atualizarIngredientesPizza(String(req.body?.nome||""),req.body?.ingredientes)})}catch(e){res.status(400).json({erro:e.message})}});
+router.patch("/api/painel/ingredientes/bebida", exigirAutenticacao, (req,res)=>{try{const chave=String(req.body?.chave||""),texto=String(req.body?.ingredientes||"").trim();if(!precos.catalogo().bebidas?.[chave])throw Error("Bebida não encontrada.");if(!texto||texto.length>500)throw Error("Informe a descrição da bebida (até 500 caracteres).");const descricoes=JSON.parse(fs.readFileSync(ARQUIVO_DESCRICOES_BEBIDAS,"utf8"));descricoes[chave]=texto;fs.writeFileSync(ARQUIVO_DESCRICOES_BEBIDAS,JSON.stringify(descricoes,null,2),"utf8");res.json({chave,ingredientes:texto})}catch(e){res.status(400).json({erro:e.message})}});
 router.get("/api/painel/adicionais", exigirAutenticacao, (req,res)=>{
   const catalogo=precos.catalogo(),configuracao=JSON.parse(fs.readFileSync(garantirArquivo("configuracaoCardapio.json","data/configuracaoCardapio.json",{}),"utf8")),salvos=JSON.parse(fs.readFileSync(ARQUIVO_ADICIONAIS,"utf8"));
   const categoriaPorNome=Object.fromEntries(Object.entries(configuracao.pizzasPorCategoria||{}).flatMap(([categoria,nomes])=>(nomes||[]).map(nome=>[nome,categoria])));
   const tipo=nome=>categoriaPorNome[nome]==="especiais"?"acompanhamentos":categoriaPorNome[nome]==="doces"?"combos":"hamburgueres";
-  res.json(Object.keys(catalogo.pizzas||{}).map(nome=>({nome,tipo:tipo(nome),adicionais:Array.isArray(salvos[nome])?salvos[nome]:[]})));
+  res.json(Object.keys(catalogo.pizzas||{}).filter(nome=>tipo(nome)!=="acompanhamentos").map(nome=>({nome,tipo:tipo(nome),adicionais:Array.isArray(salvos[nome])?salvos[nome]:[]})));
 });
 router.put("/api/painel/adicionais", exigirAutenticacao, (req,res)=>{try{
   const recebidos=req.body?.adicionais||{},catalogo=precos.catalogo(),permitidos=new Set(Object.keys(catalogo.pizzas||{})),salvar={};
