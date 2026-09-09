@@ -17,7 +17,6 @@ const {
 
 const router = express.Router();
 const publicDir = path.join(__dirname, "admin-public");
-const sessoes = new Map();
 const DURACAO_SESSAO = 24 * 60 * 60 * 1000;
 const COOKIE_PAINEL = "mybot_painel_seguro";
 const cacheLocalizacaoReversa = new Map();
@@ -84,28 +83,37 @@ function cookies(req) {
 }
 
 function criarSessao(res) {
-  const id = crypto.randomBytes(32).toString("base64url");
-  sessoes.set(hash(id), Date.now() + DURACAO_SESSAO);
+  // A sessão não pode depender da memória do processo: no Render uma próxima
+  // chamada pode chegar a outra instância. O cookie é assinado pelo token do
+  // painel e continua válido por 24 horas em qualquer instância.
+  const emitidoEm = String(Date.now());
+  const aleatorio = crypto.randomBytes(24).toString("base64url");
+  const conteudo = `${emitidoEm}.${aleatorio}`;
+  const assinatura = crypto.createHmac("sha256", tokenAdministrador()).update(conteudo).digest("base64url");
+  const id = `${conteudo}.${assinatura}`;
   res.clearCookie("mybot_painel", { path: "/" });
+  // Remove a versão anterior do mesmo cookie. Sem isso, alguns navegadores
+  // enviam os dois valores para /api/painel e o servidor pode ler o vencido.
+  res.clearCookie(COOKIE_PAINEL, { path: "/api/painel" });
   res.cookie(COOKIE_PAINEL, id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     maxAge: DURACAO_SESSAO,
-    path: "/api/painel"
+    path: "/"
   });
 }
 
 function autenticado(req) {
   const id = cookies(req)[COOKIE_PAINEL];
   if (!id) return false;
-  const chave = hash(id);
-  const expira = sessoes.get(chave);
-  if (!expira || expira < Date.now()) {
-    sessoes.delete(chave);
-    return false;
-  }
-  return true;
+  const partes = String(id).split(".");
+  if (partes.length !== 3) return false;
+  const [emitidoEm, aleatorio, assinatura] = partes;
+  const instante = Number(emitidoEm);
+  if (!Number.isFinite(instante) || instante > Date.now() || Date.now() - instante > DURACAO_SESSAO) return false;
+  const esperada = crypto.createHmac("sha256", tokenAdministrador()).update(`${emitidoEm}.${aleatorio}`).digest("base64url");
+  return compararSeguro(assinatura, esperada);
 }
 
 function exigirAutenticacao(req, res, next) {
@@ -167,8 +175,7 @@ router.post("/api/painel/entrar", (req, res) => {
 });
 
 router.post("/api/painel/sair", exigirAutenticacao, (req, res) => {
-  const id = cookies(req)[COOKIE_PAINEL];
-  if (id) sessoes.delete(hash(id));
+  res.clearCookie(COOKIE_PAINEL, { path: "/" });
   res.clearCookie(COOKIE_PAINEL, { path: "/api/painel" });
   res.clearCookie("mybot_painel", { path: "/" });
   res.sendStatus(204);
