@@ -5,18 +5,11 @@ const ZOOM_INICIAL_PIZZARIA = 15;
 async function api(url, opcoes = {}) {
   const resposta = await fetch(url, {
     ...opcoes,
-    credentials: "same-origin",
     headers: { "Content-Type": "application/json", ...(opcoes.headers || {}) }
   });
   if (resposta.status === 204) return null;
   const dados = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) {
-    if (resposta.status === 401 && typeof mostrarLoginPainel === "function") {
-      mostrarLoginPainel();
-      throw new Error("Sua sessão expirou. Entre novamente para continuar.");
-    }
-    throw new Error(dados.erro || "Não foi possível concluir a operação.");
-  }
+  if (!resposta.ok) throw new Error(dados.erro || "Não foi possível concluir a operação.");
   return dados;
 }
 
