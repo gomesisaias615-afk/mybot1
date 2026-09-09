@@ -6,6 +6,7 @@ const estoquePath = garantirArquivo("estoque.json", "services/monitoramento/esto
 const precosPizzasPath = garantirArquivo("precospizzas.json", "data/precospizzas.json", {});
 const precosBebidasPath = garantirArquivo("precosbebidas.json", "data/precosbebidas.json", {});
 const nomesBebidasPath = garantirArquivo("nomesbebidas.json", "data/nomesbebidas.json", {});
+const configuracaoCardapioPath = garantirArquivo("configuracaoCardapio.json", "data/configuracaoCardapio.json", {});
 
 const estoque = {
   pizzas: {},
@@ -23,6 +24,17 @@ function chavePizza(nome) {
     .replace(/[\u0300-\u036f]/g, "").replace(/-/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// O projeto antigo chama os produtos de "pizzas" internamente. O painel novo
+// usa o Tipo como categoria e traduz essa estrutura sem expor a categoria antiga.
+function tipoEstoqueProduto(nome) {
+  const configuracao = lerJson(configuracaoCardapioPath, {});
+  const categoria = Object.entries(configuracao.pizzasPorCategoria || {})
+    .find(([, nomes]) => Array.isArray(nomes) && nomes.includes(nome))?.[0];
+  if (categoria === "especiais") return "acompanhamentos";
+  if (categoria === "doces") return "combos";
+  return "pizzas";
+}
+
 // Estoque é controle de disponibilidade: 1 = disponível e 0 = esgotado.
 // Assim, itens novos aparecem no painel sem inventar uma quantidade física.
 function sincronizarCatalogo(dados) {
@@ -33,7 +45,8 @@ function sincronizarCatalogo(dados) {
   let mudou = false;
   for (const nome of Object.keys(lerJson(precosPizzasPath))) {
     const chave = chavePizza(nome);
-    if (!Object.prototype.hasOwnProperty.call(dados.pizzas, chave)) { dados.pizzas[chave] = 1; mudou = true; }
+    const tipo = tipoEstoqueProduto(nome);
+    if (!Object.prototype.hasOwnProperty.call(dados[tipo], chave)) { dados[tipo][chave] = 1; mudou = true; }
   }
   const bebidas = new Set([...Object.keys(lerJson(precosBebidasPath)), ...Object.keys(lerJson(nomesBebidasPath))]);
   for (const chave of bebidas) {

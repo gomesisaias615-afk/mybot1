@@ -1504,8 +1504,15 @@ function renderImagens(){const d=$("#listaImagens");if(!d)return;const busca=Str
 const aplicarGuiaAntesPreco=aplicarGuia;aplicarGuia=function(nome){aplicarGuiaAntesPreco(nome);if(nome==="precos")renderPrecos();if(nome==="ingredientes")renderIngredientes();if(nome==="imagens")renderImagens()};
 const renderPrecosCatalogoOriginal = renderPrecos;
 renderPrecos = function () {
-  if (["acompanhamentos", "combos"].includes(estado.catalogoPrecoAtual)) {
-    $("#precos").innerHTML = `<div class="vazio">Nenhum ${estado.catalogoPrecoAtual === "combos" ? "combo" : "acompanhamento"} cadastrado ainda.</div>`;
+  const catalogoSelecionado = estado.catalogoPrecoAtual;
+  if (["pizzas", "acompanhamentos", "combos"].includes(catalogoSelecionado)) {
+    const categoria = catalogoSelecionado === "pizzas" ? "tradicionais" : catalogoSelecionado === "acompanhamentos" ? "especiais" : "doces";
+    const catalogoCompleto = estado.catalogoPrecos;
+    const produtos = Object.entries(catalogoCompleto?.pizzas || {}).filter(([nome]) => (catalogoCompleto.categoriasProdutos?.[nome] || "tradicionais") === categoria);
+    estado.catalogoPrecos = { ...catalogoCompleto, pizzas: Object.fromEntries(produtos) };
+    renderPrecosCatalogoOriginal();
+    estado.catalogoPrecos = catalogoCompleto;
+    if (!produtos.length) $("#precos").innerHTML = `<div class="vazio">Nenhum ${catalogoSelecionado === "pizzas" ? "hambúrguer" : catalogoSelecionado === "combos" ? "combo" : "acompanhamento"} cadastrado ainda.</div>`;
     return;
   }
   renderPrecosCatalogoOriginal();

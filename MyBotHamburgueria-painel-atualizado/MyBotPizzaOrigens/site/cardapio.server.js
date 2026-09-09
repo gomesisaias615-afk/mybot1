@@ -102,16 +102,18 @@ function montarCardapio() {
     };
     const categoriaConfigurada = Object.entries(configuracao.pizzasPorCategoria || {})
       .find(([, nomes]) => nomes.includes(nome))?.[0];
+    const categoria = categoriaConfigurada || detalhes.categoria;
+    const tipoEstoque = categoria === "especiais" ? "acompanhamentos" : categoria === "doces" ? "combos" : "pizzas";
 
     return {
       tipo: "pizza",
       chave,
       nome,
-      categoria: categoriaConfigurada || detalhes.categoria,
+      categoria,
       ingredientes: catalogoPrecos.ingredientesPizzas?.[nome] || detalhes.ingredientes,
       imagem: imagensProdutos.urlImagem("pizzas", nome),
-      estoque: Object.prototype.hasOwnProperty.call(estoqueAtual.pizzas || {}, chave) ? Number(estoqueAtual.pizzas[chave]) : null,
-      disponivel: produtoDisponivel("pizzas", chave),
+      estoque: Object.prototype.hasOwnProperty.call(estoqueAtual[tipoEstoque] || {}, chave) ? Number(estoqueAtual[tipoEstoque][chave]) : null,
+      disponivel: produtoDisponivel(tipoEstoque, chave),
       promocao: promocoesPizzas.has(chave) || Object.values(catalogoPrecos.promocoes.pizzas?.[nome] || {}).some(precosService.ativa),
       promocoes: Object.fromEntries(Object.keys(tamanhos || {}).map(tamanho => [tamanho, precosService.ativa(catalogoPrecos.promocoes.pizzas?.[nome]?.[tamanho]) ? catalogoPrecos.promocoes.pizzas[nome][tamanho] : null])),
       precos: Object.fromEntries(Object.entries(tamanhos || {}).map(([tamanho, valor]) => [tamanho, precosService.ativa(catalogoPrecos.promocoes.pizzas?.[nome]?.[tamanho]) ? Number(catalogoPrecos.promocoes.pizzas[nome][tamanho].por) : Number(valor)]))
