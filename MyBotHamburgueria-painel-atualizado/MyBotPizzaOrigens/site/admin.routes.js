@@ -359,7 +359,10 @@ router.get("/cardapio/imagem/:tipo/:chave", (req, res) => {
 
 router.get("/api/painel/imagens", exigirAutenticacao, (req, res) => {
   const catalogo = precos.catalogo();
-  const pizzas = Object.keys(catalogo.pizzas || {}).map(chave => ({ tipo: "pizzas", chave, nome: chave, imagem: imagensProdutos.urlImagem("pizzas", chave) }));
+  const configuracao = JSON.parse(fs.readFileSync(garantirArquivo("configuracaoCardapio.json", "data/configuracaoCardapio.json", {}), "utf8"));
+  const categoriaPorNome = Object.fromEntries(Object.entries(configuracao.pizzasPorCategoria || {}).flatMap(([categoria, nomes]) => (nomes || []).map(nome => [nome, categoria])));
+  const tipoProduto = nome => categoriaPorNome[nome] === "especiais" ? "acompanhamentos" : categoriaPorNome[nome] === "doces" ? "combos" : "pizzas";
+  const pizzas = Object.keys(catalogo.pizzas || {}).map(chave => { const tipo = tipoProduto(chave); return { tipo, chave, nome: chave, imagem: imagensProdutos.urlImagem(tipo, chave) }; });
   const bebidas = Object.entries(catalogo.nomesBebidas || {}).map(([chave, dados]) => ({ tipo: "bebidas", chave, nome: dados.nome || chave, imagem: imagensProdutos.urlImagem("bebidas", chave) }));
   res.json([...pizzas, ...bebidas]);
 });
@@ -410,11 +413,11 @@ router.get("/api/painel/precos", exigirAutenticacao, (req,res)=>{
   }
   res.json({...catalogo,categoriasProdutos});
 });
-router.get("/api/painel/ingredientes", exigirAutenticacao, (req,res)=>res.json(montarCardapio().pizzas.map(({nome,ingredientes})=>({nome,ingredientes}))));
+router.get("/api/painel/ingredientes", exigirAutenticacao, (req,res)=>res.json(montarCardapio().pizzas.map(({nome,ingredientes,categoria})=>({nome,ingredientes,categoria}))));
 router.patch("/api/painel/ingredientes/pizza", exigirAutenticacao, (req,res)=>{try{res.json({nome:String(req.body?.nome||""),ingredientes:precos.atualizarIngredientesPizza(String(req.body?.nome||""),req.body?.ingredientes)})}catch(e){res.status(400).json({erro:e.message})}});
 router.patch("/api/painel/precos/pizza", exigirAutenticacao, (req,res)=>{try{res.json({preco:precos.atualizarPrecoPizza(String(req.body?.nome||""),String(req.body?.tamanho||""),req.body?.preco)})}catch(e){res.status(400).json({erro:e.message})}});
 router.patch("/api/painel/precos/bebida", exigirAutenticacao, (req,res)=>{try{res.json({preco:precos.atualizarPrecoBebida(String(req.body?.chave||""),req.body?.preco)})}catch(e){res.status(400).json({erro:e.message})}});
-router.put("/api/painel/promocoes", exigirAutenticacao, (req,res)=>{try{const dados=req.body||{};if(String(dados.tipo)==="pizza"){const estoque=recarregarEstoque();const chave=String(dados.chave||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();if(Number(estoque.pizzas?.[chave]||0)<=0)throw Error("Não é possível aplicar promoção em uma pizza indisponível.");}res.json(precos.salvarPromocao(dados))}catch(e){res.status(400).json({erro:e.message})}});
+router.put("/api/painel/promocoes", exigirAutenticacao, (req,res)=>{try{const dados=req.body||{};if(String(dados.tipo)==="pizza"){const estoque=recarregarEstoque(),configuracao=JSON.parse(fs.readFileSync(garantirArquivo("configuracaoCardapio.json","data/configuracaoCardapio.json",{}),"utf8")),categoria=Object.entries(configuracao.pizzasPorCategoria||{}).find(([,nomes])=>(nomes||[]).includes(String(dados.chave||"")))?.[0],tipoEstoque=categoria==="especiais"?"acompanhamentos":categoria==="doces"?"combos":"pizzas",chave=String(dados.chave||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();if(Number(estoque[tipoEstoque]?.[chave]||0)<=0)throw Error("Não é possível aplicar promoção em um produto indisponível.");}res.json(precos.salvarPromocao(dados))}catch(e){res.status(400).json({erro:e.message})}});
 router.delete("/api/painel/promocoes", exigirAutenticacao, (req,res)=>{try{res.json(precos.removerPromocao(String(req.body?.tipo||""),String(req.body?.chave||""),String(req.body?.tamanho||"")))}catch(e){res.status(400).json({erro:e.message})}});
 router.patch("/api/painel/configuracao", exigirAutenticacao, (req, res) => {
   res.json(atualizarConfiguracaoPainel(req.body || {}));

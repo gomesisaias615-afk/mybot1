@@ -111,7 +111,7 @@ function montarCardapio() {
       nome,
       categoria,
       ingredientes: catalogoPrecos.ingredientesPizzas?.[nome] || detalhes.ingredientes,
-      imagem: imagensProdutos.urlImagem("pizzas", nome),
+      imagem: imagensProdutos.urlImagem(tipoEstoque, nome),
       estoque: Object.prototype.hasOwnProperty.call(estoqueAtual[tipoEstoque] || {}, chave) ? Number(estoqueAtual[tipoEstoque][chave]) : null,
       disponivel: produtoDisponivel(tipoEstoque, chave),
       promocao: promocoesPizzas.has(chave) || Object.values(catalogoPrecos.promocoes.pizzas?.[nome] || {}).some(precosService.ativa),

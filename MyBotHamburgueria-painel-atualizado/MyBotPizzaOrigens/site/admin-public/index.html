@@ -176,7 +176,7 @@
           <div><p class="eyebrow">CARDÁPIO SINCRONIZADO</p><h2>Estoque</h2></div>
           <input id="buscarEstoque" type="search" placeholder="Buscar hambúrguer ou bebida">
         </div>
-        <div class="abas"><button class="aba ativa" data-tipo="pizzas">Hambúrgueres</button><button class="aba" data-tipo="acompanhamentos">Acompanhamentos</button><button class="aba" data-tipo="combos">Combos</button><button class="aba" data-tipo="bebidas">Bebidas</button></div>
+        <div class="abas"><button class="aba aba-estoque ativa" data-tipo="pizzas">Hambúrgueres</button><button class="aba aba-estoque" data-tipo="acompanhamentos">Acompanhamentos</button><button class="aba aba-estoque" data-tipo="combos">Combos</button><button class="aba aba-estoque" data-tipo="bebidas">Bebidas</button></div>
         <div id="estoque" class="grade-estoque"></div>
       </section>
 
@@ -184,7 +184,7 @@
 
       <section class="card precos-card secao-painel" data-secao="imagens"><div class="titulo-card"><div><p class="eyebrow">CARDÁPIO VISUAL</p><h2>Imagens dos produtos</h2></div><input id="buscarImagens" type="search" placeholder="Buscar produto"></div><p class="precos-ajuda">Selecione um produto e envie uma foto JPG, PNG ou WebP de até 3 MB. A imagem aparece automaticamente no cardápio.</p><div class="abas"><button class="aba-imagem ativa" data-tipo-imagem="todos">Todos</button><button class="aba-imagem" data-tipo-imagem="pizzas">Hambúrgueres</button><button class="aba-imagem" data-tipo-imagem="acompanhamentos">Acompanhamentos</button><button class="aba-imagem" data-tipo-imagem="combos">Combos</button><button class="aba-imagem" data-tipo-imagem="bebidas">Bebidas</button></div><div id="listaImagens" class="grade-imagens"></div></section>
 
-      <section class="card precos-card secao-painel" data-secao="ingredientes"><div class="titulo-card"><div><p class="eyebrow">CARDÁPIO</p><h2>Ingredientes dos hambúrgueres</h2></div><input id="buscarIngredientes" type="search" placeholder="Buscar hambúrguer"></div><p class="precos-ajuda">Edite a descrição de ingredientes exibida no cardápio digital.</p><div id="listaIngredientes" class="lista-precos"></div></section>
+      <section class="card precos-card secao-painel" data-secao="ingredientes"><div class="titulo-card"><div><p class="eyebrow">CARDÁPIO</p><h2>Descrição dos produtos</h2></div><input id="buscarIngredientes" type="search" placeholder="Buscar produto"></div><p class="precos-ajuda">Edite a descrição exibida no cardápio digital. Bebidas não precisam de descrição.</p><div class="abas"><button class="aba aba-descricao ativa" data-tipo-descricao="todos">Todos</button><button class="aba aba-descricao" data-tipo-descricao="hamburgueres">Hambúrgueres</button><button class="aba aba-descricao" data-tipo-descricao="acompanhamentos">Acompanhamentos</button><button class="aba aba-descricao" data-tipo-descricao="combos">Combos</button></div><div id="listaIngredientes" class="lista-precos"></div></section>
 
       <section class="card precos-card secao-painel" data-secao="itens"><div class="titulo-card"><div><p class="eyebrow">CARDÁPIO</p><h2>Adicionar itens</h2></div></div><p class="precos-ajuda">Cadastre hambúrgueres, acompanhamentos, combos ou bebidas no cardápio.</p><form id="formNovoItem" class="linha-promocao"><strong>Novo item</strong><label>Tipo<select id="novoTipo"><option value="pizza">Hambúrguer</option><option value="acompanhamento">Acompanhamento</option><option value="combo">Combo</option><option value="bebida">Bebida</option></select></label><label>Nome<input id="novoNome" required maxlength="80" placeholder="Ex.: Frango com cheddar"></label><label id="grupoIngredientesNovo">Descrição<textarea id="novoIngredientes" required maxlength="500" rows="3" placeholder="Ex.: Hambúrguer artesanal com frango, cheddar e molho especial."></textarea></label><label id="precoHamburguer">Preço inicial<input id="novoPrecoHamburguer" required type="number" step=".01" min=".01" placeholder="0,00"></label><label id="grupoPrecoBebida" hidden>Preço inicial<input id="novoPreco" type="number" step=".01" min=".01" placeholder="0,00"></label><button class="btn primario">Adicionar ao cardápio</button></form></section>
       <section class="card secao-painel guia-ajuda" data-secao="ajuda">
@@ -235,7 +235,7 @@
     <div id="toast" class="toast" role="status"></div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
-    <script src="/painel/app.js?v=20260909-5" defer></script>
+    <script src="/painel/app.js?v=20260909-7" defer></script>
   <script>window.addEventListener("load",()=>setTimeout(()=>document.querySelector("#mybotSplash")?.classList.add("sair"),650));</script>
 </body>
 </html>
