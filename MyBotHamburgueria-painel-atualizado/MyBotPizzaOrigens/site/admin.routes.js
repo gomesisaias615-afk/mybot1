@@ -84,8 +84,9 @@ function cookies(req) {
 }
 
 function criarSessao(res) {
-  const id = crypto.randomBytes(32).toString("base64url");
-  sessoes.set(hash(id), Date.now() + DURACAO_SESSAO);
+  const expira = Date.now() + DURACAO_SESSAO;
+  const assinatura = crypto.createHmac("sha256", tokenAdministrador()).update(String(expira)).digest("base64url");
+  const id = `${expira}.${assinatura}`;
   res.clearCookie("mybot_painel", { path: "/" });
   res.cookie(COOKIE_PAINEL, id, {
     httpOnly: true,
@@ -99,13 +100,11 @@ function criarSessao(res) {
 function autenticado(req) {
   const id = cookies(req)[COOKIE_PAINEL];
   if (!id) return false;
-  const chave = hash(id);
-  const expira = sessoes.get(chave);
-  if (!expira || expira < Date.now()) {
-    sessoes.delete(chave);
-    return false;
-  }
-  return true;
+  const [expiraTexto, assinatura] = String(id).split(".");
+  const expira = Number(expiraTexto);
+  if (!Number.isFinite(expira) || expira < Date.now() || !assinatura || !tokenAdministrador()) return false;
+  const esperada = crypto.createHmac("sha256", tokenAdministrador()).update(String(expira)).digest("base64url");
+  return compararSeguro(assinatura, esperada);
 }
 
 function exigirAutenticacao(req, res, next) {
@@ -381,17 +380,17 @@ router.post("/api/painel/catalogo/item", exigirAutenticacao, (req,res)=>{try{
   const tipo=String(req.body?.tipo||""),nome=String(req.body?.nome||"").trim(),categoria=String(req.body?.categoria||""),ingredientes=String(req.body?.ingredientes||"").trim();
   if(!nome||nome.length>80)throw Error("Informe o nome do item.");
   const ler=p=>JSON.parse(fs.readFileSync(p,"utf8")),salvar=(p,d)=>fs.writeFileSync(p,JSON.stringify(d,null,2));
-  if(tipo==="pizza"){
-    if(!["tradicionais","especiais","doces"].includes(categoria))throw Error("Escolha a categoria da pizza.");
-    if(!ingredientes||ingredientes.length>500)throw Error("Informe os ingredientes da pizza (até 500 caracteres).");
+  if(["pizza","acompanhamento","combo"].includes(tipo)){
+    const categoriaDestino=tipo==="pizza"?"tradicionais":tipo==="acompanhamento"?"especiais":"doces";
+    if(tipo==="pizza"&&(!ingredientes||ingredientes.length>500))throw Error("Informe a descrição do hambúrguer (até 500 caracteres).");
     const valor=Number(req.body?.preco);if(!Number.isFinite(valor)||valor<=0)throw Error("Informe um preço válido.");const tamanhos={U:valor};
     const p=garantirArquivo("precospizzas.json","data/precospizzas.json",{}),c=garantirArquivo("configuracaoCardapio.json","data/configuracaoCardapio.json",{}),e=garantirArquivo("estoque.json","services/monitoramento/estoque.json",{pizzas:{},bebidas:{}}),pre=ler(p),conf=ler(c),est=ler(e);
-    if(pre[nome])throw Error("Já existe uma pizza com esse nome.");pre[nome]=tamanhos;conf.pizzasPorCategoria[categoria]||=[];conf.pizzasPorCategoria[categoria].push(nome);est.pizzas=est.pizzas||{};est.pizzas[nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/-/g," ").replace(/\s+/g," ").trim()]=1;salvar(p,pre);salvar(c,conf);salvar(e,est);precos.atualizarIngredientesPizza(nome,ingredientes)
+    if(pre[nome])throw Error("Já existe um item com esse nome.");pre[nome]=tamanhos;conf.pizzasPorCategoria[categoriaDestino]||=[];conf.pizzasPorCategoria[categoriaDestino].push(nome);est.pizzas=est.pizzas||{};est.pizzas[nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/-/g," ").replace(/\s+/g," ").trim()]=1;salvar(p,pre);salvar(c,conf);salvar(e,est);if(tipo==="pizza")precos.atualizarIngredientesPizza(nome,ingredientes)
   }else if(tipo==="bebida"){
     const preco=Number(req.body?.preco);if(!Number.isFinite(preco)||preco<=0)throw Error("Informe um preço válido.");
     const k=nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_"),p=garantirArquivo("precosbebidas.json","data/precosbebidas.json",{}),n=garantirArquivo("nomesbebidas.json","data/nomesbebidas.json",{}),e=garantirArquivo("estoque.json","services/monitoramento/estoque.json",{pizzas:{},bebidas:{}}),pre=ler(p),nom=ler(n),est=ler(e);
     if(pre[k])throw Error("Já existe uma bebida com esse nome.");pre[k]=preco;nom[k]={nome,aliases:[k.replaceAll("_"," ")]};est.bebidas=est.bebidas||{};est.bebidas[k]=1;salvar(p,pre);salvar(n,nom);salvar(e,est)
-  }else if(["acompanhamento","combo"].includes(tipo)){
+  }else if(false){
     const preco=Number(req.body?.preco);if(!Number.isFinite(preco)||preco<=0)throw Error("Informe um preço válido.");
     const categoriaEstoque=tipo==="acompanhamento"?"acompanhamentos":"combos",arquivoPreco=tipo==="acompanhamento"?"precosacompanhamentos.json":"precoscombos.json",k=nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_");
     const p=garantirArquivo(arquivoPreco,"data/"+arquivoPreco,{}),e=garantirArquivo("estoque.json","services/monitoramento/estoque.json",{pizzas:{},bebidas:{},acompanhamentos:{},combos:{}}),pre=ler(p),est=ler(e);

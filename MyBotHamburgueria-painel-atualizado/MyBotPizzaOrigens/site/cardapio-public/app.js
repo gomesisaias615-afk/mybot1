@@ -8,10 +8,10 @@ const semResultado = document.querySelector("#semResultado");
 const sincronizacao = document.querySelector("#sincronizacao");
 
 const titulos = {
-  tradicionais: "Pizzas Tradicionais",
-  especiais: "Pizzas Especiais",
+  tradicionais: "Hambúrgueres",
+  especiais: "Acompanhamentos",
   bebidas: "Bebidas",
-  doces: "Pizzas Doces"
+  doces: "Combos"
 };
 
 let categoriaAtual = "";
@@ -130,4 +130,3 @@ fetch(caminhoApiCardapio(), { cache: "no-store" })
   .then(resposta => resposta.ok ? resposta.json() : Promise.reject())
   .then(aplicarCategoriasAtivas)
   .catch(() => {});
-
