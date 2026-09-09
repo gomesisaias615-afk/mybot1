@@ -84,9 +84,8 @@ function cookies(req) {
 }
 
 function criarSessao(res) {
-  const expira = Date.now() + DURACAO_SESSAO;
-  const assinatura = crypto.createHmac("sha256", tokenAdministrador()).update(String(expira)).digest("base64url");
-  const id = `${expira}.${assinatura}`;
+  const id = crypto.randomBytes(32).toString("base64url");
+  sessoes.set(hash(id), Date.now() + DURACAO_SESSAO);
   res.clearCookie("mybot_painel", { path: "/" });
   res.cookie(COOKIE_PAINEL, id, {
     httpOnly: true,
@@ -100,11 +99,13 @@ function criarSessao(res) {
 function autenticado(req) {
   const id = cookies(req)[COOKIE_PAINEL];
   if (!id) return false;
-  const [expiraTexto, assinatura] = String(id).split(".");
-  const expira = Number(expiraTexto);
-  if (!Number.isFinite(expira) || expira < Date.now() || !assinatura || !tokenAdministrador()) return false;
-  const esperada = crypto.createHmac("sha256", tokenAdministrador()).update(String(expira)).digest("base64url");
-  return compararSeguro(assinatura, esperada);
+  const chave = hash(id);
+  const expira = sessoes.get(chave);
+  if (!expira || expira < Date.now()) {
+    sessoes.delete(chave);
+    return false;
+  }
+  return true;
 }
 
 function exigirAutenticacao(req, res, next) {
