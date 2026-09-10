@@ -37,7 +37,7 @@ async function tratarAdicionais({ msg, user, contexto }) {
       contexto.estados[user] = "escolher_adicional";
       await msg.reply(`Digite o *nome do adicional* e o *nome do produto*.
 
-Exemplo: “Bacon no Hambúrguer X”.
+Exemplos: “Bacon no Hambúrguer X” ou “Bacon no Combo da casa”.
 
 ${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
       return true;
@@ -55,7 +55,7 @@ ${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
 
   const adicional = localizarAdicional(msg.body, contexto.adicionaisDisponiveis[user] || []);
   if (!adicional) {
-    await msg.reply(`Não consegui identificar o adicional. Escreva o adicional junto com o produto, por exemplo: “Bacon no Hambúrguer X”.
+    await msg.reply(`Não consegui identificar o adicional. Escreva o adicional junto com o produto, por exemplo: “Bacon no Combo da casa”.
 
 ${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
     return true;

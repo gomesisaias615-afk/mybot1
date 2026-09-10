@@ -47,7 +47,9 @@ Escolha uma opção:
 
 ${opcoesMenu}
 
-Digite o número ou toque em uma opção.`,
+Digite o número ou toque em uma opção.
+
+💡 A qualquer momento, digite *menu* para voltar ao início e reiniciar o pedido.`,
 
   localizacao:
 `📍 Nossa localização...`,
