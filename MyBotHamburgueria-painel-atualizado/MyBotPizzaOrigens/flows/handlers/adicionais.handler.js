@@ -1,5 +1,6 @@
 const { respostaSim, respostaNao } = require("../../utils/texto");
 const { adicionaisDisponiveis, formatarAdicionais, localizarAdicional } = require("../adicionais");
+const { interpretarAdicionaisComGroq } = require("../../services/groqCardapio.service");
 
 async function perguntarObservacao(msg, user, contexto) {
   contexto.estados[user] = "perguntar_observacao_pizza";
@@ -35,9 +36,9 @@ async function tratarAdicionais({ msg, user, contexto }) {
     if (respostaNao(msg.body)) { await perguntarObservacao(msg, user, contexto); return true; }
     if (respostaSim(msg.body)) {
       contexto.estados[user] = "escolher_adicional";
-      await msg.reply(`Digite o *nome do adicional* e o *nome do produto*.
+      await msg.reply(`Digite um ou mais adicionais junto com os produtos.
 
-Exemplos: “Bacon no Hambúrguer X” ou “Bacon no Combo da casa”.
+Exemplos: “Bacon no Hambúrguer X” ou “Bacon no Combo da casa e cheddar no X-Salada”.
 
 ${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
       return true;
@@ -53,23 +54,33 @@ ${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
     return true;
   }
 
-  const adicional = localizarAdicional(msg.body, contexto.adicionaisDisponiveis[user] || []);
-  if (!adicional) {
+  const disponiveis = contexto.adicionaisDisponiveis[user] || [];
+  let selecionados = [];
+  try {
+    selecionados = await interpretarAdicionaisComGroq(msg.body, disponiveis);
+  } catch (erro) {
+    console.warn(`Groq indisponível para adicionais: ${erro.message}`);
+    const adicionalLocal = localizarAdicional(msg.body, disponiveis);
+    if (adicionalLocal) selecionados = [adicionalLocal];
+  }
+
+  if (!selecionados.length) {
     await msg.reply(`Não consegui identificar o adicional. Escreva o adicional junto com o produto, por exemplo: “Bacon no Combo da casa”.
 
-${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
+${formatarAdicionais(disponiveis)}`);
     return true;
   }
 
   contexto.adicionais[user] ||= [];
-  contexto.adicionais[user].push(adicional);
+  contexto.adicionais[user].push(...selecionados);
+  const itensConfirmados = selecionados.map(adicional =>
+    `➕ *${adicional.nome}*\n🍔 Produto: *${adicional.produto}*\n💰 Valor: *R$ ${adicional.valor.toFixed(2).replace(".", ",")}*`
+  ).join("\n\n━━━━━━━━━━━━━━━━━━━━\n\n");
   await msg.reply(`╭━━━━━━━━━━━━━━━━━━━━╮
-      ✅ *ADICIONAL INCLUÍDO*
+     ✅ *ADICIONAL(IS) INCLUÍDO(S)*
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
-➕ *${adicional.nome}*
-🍔 Produto: *${adicional.produto}*
-💰 Valor: *R$ ${adicional.valor.toFixed(2).replace(".", ",")}*`);
+${itensConfirmados}`);
   await perguntarObservacao(msg, user, contexto);
   return true;
 }

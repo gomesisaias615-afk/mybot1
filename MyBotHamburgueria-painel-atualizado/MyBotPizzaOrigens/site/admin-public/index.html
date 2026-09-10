@@ -72,6 +72,7 @@
 
         <article class="card controles secao-painel" data-secao="taxa">
           <div class="titulo-card"><div><p class="eyebrow">TAXA DE ENTREGA</p><h2>Valores e localização</h2></div></div>
+          <p class="precos-ajuda">Configure a taxa de entrega, o endereço da hamburgueria e a área atendida.</p>
           <section class="config-entrega">
             <div class="config-entrega-cabecalho">
               <h3>Como a taxa será calculada?</h3>
@@ -153,6 +154,7 @@
             <button class="modalidade-pedido" data-modalidade="salao"><span>🍽️ Salão</span><b class="contador-pedidos" data-contador="salao" hidden>0</b></button>
             <button class="modalidade-pedido" data-modalidade="retirada"><span>🥡 Retirada</span><b class="contador-pedidos" data-contador="retirada" hidden>0</b></button>
           </div>
+          <p class="precos-ajuda">Acompanhe pedidos novos e atualize cada etapa para manter o cliente informado.</p>
           <div class="subguias-pedidos"><button class="subguia ativa" data-fase="confirmar">Confirmar <b class="contador-pedidos" data-contador-fase="confirmar" hidden>0</b></button><button class="subguia" data-fase="em_preparo">Em preparo <b class="contador-pedidos" data-contador-fase="em_preparo" hidden>0</b></button><button class="subguia" data-fase="pronto">Pronto <b class="contador-pedidos" data-contador-fase="pronto" hidden>0</b></button></div><div id="pedidos" class="lista-pedidos"></div>
         </article>
       </section>
@@ -162,6 +164,7 @@
           <div><p class="eyebrow">ARQUIVO DE PEDIDOS</p><h2>Histórico</h2></div>
           <input id="buscarHistorico" type="search" inputmode="numeric" placeholder="Buscar pelo código do pedido">
         </div>
+        <p class="precos-ajuda">Consulte pedidos anteriores, concluídos, cancelados ou entregues.</p>
         <div class="filtros-historico" aria-label="Filtrar histórico por modalidade">
           <button class="filtro-historico ativo" data-historico-modalidade="todos">Todos</button>
           <button class="filtro-historico entrega" data-historico-modalidade="entrega">🛵 Entrega</button>
@@ -176,6 +179,7 @@
           <div><p class="eyebrow">CARDÁPIO SINCRONIZADO</p><h2>Estoque</h2></div>
           <input id="buscarEstoque" type="search" placeholder="Buscar hambúrguer ou bebida">
         </div>
+        <p class="precos-ajuda">Use − para marcar como esgotado e + para disponibilizar. Clique duas vezes em − para excluir o item do estoque e do cardápio.</p>
         <div class="abas"><button class="aba aba-estoque ativa" data-tipo="todos">Todos</button><button class="aba aba-estoque" data-tipo="pizzas">Hambúrgueres</button><button class="aba aba-estoque" data-tipo="acompanhamentos">Acompanhamentos</button><button class="aba aba-estoque" data-tipo="combos">Combos</button><button class="aba aba-estoque" data-tipo="bebidas">Bebidas</button></div>
         <div id="estoque" class="grade-estoque"></div>
       </section>

@@ -20,7 +20,7 @@ function identificarOpcaoMenu(msg, permitirNumeros = false) {
   const texto = normalizar(idBotao || msg.body)
     .replace(/^[^a-z0-9]+/i, "");
 
-  if (["fazer pedido", "pedido"].includes(texto)) return "pedido";
+  if (["fazer pedido", "pedido", "fazer pedido pizza"].includes(texto)) return "pedido";
   if (["instagram", "instagram da pizzaria"].includes(texto)) return "instagram";
   if (["ofertas", "oferta", "promocoes", "promocao", "grupo de promocoes"].includes(texto)) return "promocoes";
   if (["mybot", "contato mybot", "entrar em contato com a mybot"].includes(texto)) return "contato";

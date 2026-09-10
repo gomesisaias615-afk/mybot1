@@ -197,13 +197,19 @@ async function consultarGroq(mensagem, opcoes, tipo) {
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  const catalogo = opcoes.map(({ chave, nome, aliases, categoria }) => ({
-    chave,
-    nome,
-    aliases: aliases || [],
-    categoria: categoria || (tipo === "bebida" ? "bebidas" : "produtos")
-  }));
-  const formatoResposta = tipo === "pizza"
+  const catalogo = tipo === "adicional"
+    ? opcoes.map(({ produto, nome, valor, categoria }) => ({ produto, adicional: nome, valor, categoria }))
+    : opcoes.map(({ chave, nome, aliases, categoria }) => ({
+      chave,
+      nome,
+      aliases: aliases || [],
+      categoria: categoria || (tipo === "bebida" ? "bebidas" : "produtos")
+    }));
+  const formatoResposta = tipo === "adicional"
+    ? `Reconheça um ou vários adicionais da mesma mensagem. Cada item deve trazer o nome EXATO do produto e o nome EXATO do adicional presentes no CATÁLOGO.
+Exemplo: "bacon no Combo da casa e cheddar no X-Salada" resulta em {"itens":[{"produto":"Combo da casa","adicional":"Bacon"},{"produto":"X-Salada","adicional":"Cheddar"}],"erro":null}.
+Responda exclusivamente em JSON.`
+    : tipo === "pizza"
     ? `Cada produto deve ser um item separado. Reconheça hambúrgueres, acompanhamentos e combos pelo CATÁLOGO. Não existe tamanho de produto.
 Exemplo: "2 X-Salada e 1 Combo da casa" resulta em {"itens":[{"produto":"X-Salada","quantidade":2},{"produto":"Combo da casa","quantidade":1}],"erro":null}.
 Responda exclusivamente em JSON.`
@@ -370,5 +376,36 @@ async function interpretarComGroq(mensagem, opcoes, tipo) {
   return { itens, erros };
 }
 
-module.exports = { interpretarComGroq, interpretarLocalmente };
+async function interpretarAdicionaisComGroq(mensagem, adicionais) {
+  let resultado;
+  try {
+    resultado = await consultarGroq(mensagem, adicionais, "adicional");
+  } catch (erro) {
+    throw new Error(`Não foi possível consultar a IA para os adicionais: ${erro.message}`);
+  }
+
+  if (!resultado || !Array.isArray(resultado.itens)) {
+    throw new Error("A IA retornou uma resposta inválida para os adicionais.");
+  }
+  if (resultado.itens.length > MAX_ITEMS) {
+    throw new Error(`A IA retornou mais de ${MAX_ITEMS} adicionais.`);
+  }
+
+  const selecionados = [];
+  for (const item of resultado.itens) {
+    const produto = normalizar(item?.produto);
+    const nome = normalizar(item?.adicional);
+    const adicional = adicionais.find(opcao =>
+      normalizar(opcao.produto) === produto && normalizar(opcao.nome) === nome
+    );
+    if (adicional && !selecionados.some(atual =>
+      normalizar(atual.produto) === normalizar(adicional.produto) && normalizar(atual.nome) === normalizar(adicional.nome)
+    )) selecionados.push(adicional);
+  }
+
+  if (!selecionados.length && resultado.erro) throw new Error(String(resultado.erro));
+  return selecionados;
+}
+
+module.exports = { interpretarComGroq, interpretarLocalmente, interpretarAdicionaisComGroq };
 

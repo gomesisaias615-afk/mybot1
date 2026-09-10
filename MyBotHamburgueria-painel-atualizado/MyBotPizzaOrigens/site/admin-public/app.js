@@ -1123,6 +1123,17 @@ document.addEventListener("click", async evento => {
   evento.preventDefault();
   evento.stopImmediatePropagation();
   try {
+    const identificador = `${botao.dataset.tipo}|${botao.dataset.chave}`;
+    const agora = Date.now();
+    if (botao.dataset.disponibilidade === "esgotar" && window.ultimoCliqueMenosEstoque?.id === identificador && agora - window.ultimoCliqueMenosEstoque.tempo < 700) {
+      window.ultimoCliqueMenosEstoque = null;
+      if (!confirm("Excluir este item do estoque e do cardápio? Esta ação não pode ser desfeita.")) return;
+      await api("/api/painel/catalogo/item", { method: "DELETE", body: JSON.stringify({ tipo: botao.dataset.tipo, chave: botao.dataset.chave }) });
+      await carregar();
+      toast("Item excluído do estoque e do cardápio.");
+      return;
+    }
+    window.ultimoCliqueMenosEstoque = { id: identificador, tempo: agora };
     const quantidade = botao.dataset.disponibilidade === "esgotar" ? 0 : 10000;
     await atualizarEstoque(botao.dataset.tipo, botao.dataset.chave, quantidade);
     toast(quantidade ? "Produto disponível novamente." : "Produto marcado como esgotado.");
