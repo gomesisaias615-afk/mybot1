@@ -1,5 +1,5 @@
 const $ = seletor => document.querySelector(seletor);
-const estado = { dados: null, tipoEstoque: "pizzas", busca: "", filtro: "todos" };
+const estado = { dados: null, tipoEstoque: "todos", busca: "", filtro: "todos" };
 const ZOOM_INICIAL_PIZZARIA = 15;
 
 async function api(url, opcoes = {}) {
@@ -1586,8 +1586,59 @@ document.addEventListener("change",e=>{if(e.target.id==="novoTipo")atualizarForm
 atualizarFormularioNovoItem();
 document.addEventListener("input",e=>{if(e.target.id==="buscarIngredientes")renderIngredientes()});
 document.addEventListener("click",e=>{const aba=e.target.closest(".aba-descricao");if(!aba)return;estado.tipoDescricao=aba.dataset.tipoDescricao;document.querySelectorAll(".aba-descricao").forEach(x=>x.classList.toggle("ativa",x===aba));renderIngredientes()});
-document.addEventListener("input",e=>{if(e.target.id==="buscarAdicionais")renderAdicionais();const nome=e.target.dataset.adicionalNome,preco=e.target.dataset.adicionalPreco,indice=Number(e.target.dataset.adicionalIndice);if(!nome&&!preco)return;const produto=(estado.adicionais||[]).find(item=>item.nome===decodeURIComponent(nome||preco));if(!produto||!produto.adicionais[indice])return;if(nome)produto.adicionais[indice].nome=e.target.value;if(preco)produto.adicionais[indice].preco=e.target.value;estado.adicionaisAlterados=true});
-document.addEventListener("click",async e=>{const aba=e.target.closest(".aba-adicional");if(aba){estado.tipoAdicional=aba.dataset.tipoAdicional;document.querySelectorAll(".aba-adicional").forEach(x=>x.classList.toggle("ativa",x===aba));return renderAdicionais()}const adicionar=e.target.closest("[data-adicionar-adicional]"),remover=e.target.closest("[data-remover-adicional]"),salvar=e.target.closest("#salvarAdicionais");if(adicionar){const produto=(estado.adicionais||[]).find(item=>item.nome===decodeURIComponent(adicionar.dataset.adicionarAdicional));if(produto){produto.adicionais.push({nome:"",preco:""});estado.adicionaisAlterados=true;renderAdicionais()}return}if(remover){const produto=(estado.adicionais||[]).find(item=>item.nome===decodeURIComponent(remover.dataset.removerAdicional));if(produto){produto.adicionais.splice(Number(remover.dataset.adicionalIndice),1);estado.adicionaisAlterados=true;renderAdicionais()}return}if(!salvar)return;try{salvar.disabled=true;salvar.textContent="Salvando...";const adicionais=Object.fromEntries((estado.adicionais||[]).map(item=>[item.nome,item.adicionais||[]]));const resposta=await api("/api/painel/adicionais",{method:"PUT",body:JSON.stringify({adicionais})});estado.adicionais=(estado.adicionais||[]).map(item=>({...item,adicionais:resposta.adicionais?.[item.nome]||[]}));estado.adicionaisAlterados=false;renderAdicionais();toast("Adicionais salvos.")}catch(erro){toast(erro.message)}finally{salvar.disabled=false;salvar.textContent="Salvar alterações"}});
+document.addEventListener("input", e => {
+  if (e.target.id === "buscarAdicionais") return renderAdicionais();
+  const nomeCodificado = e.target.dataset.adicionalNome;
+  const precoCodificado = e.target.dataset.adicionalPreco;
+  if (!nomeCodificado && !precoCodificado) return;
+  const nomeProduto = decodeURIComponent(nomeCodificado || precoCodificado);
+  const produto = (estado.adicionais || []).find(item => item.nome === nomeProduto);
+  const indice = Number(e.target.dataset.adicionalIndice);
+  if (!produto || !produto.adicionais[indice]) return;
+  if (nomeCodificado) produto.adicionais[indice].nome = e.target.value;
+  if (precoCodificado) produto.adicionais[indice].preco = e.target.value;
+  estado.adicionaisAlterados = true;
+});
+document.addEventListener("click", async e => {
+  const aba = e.target.closest(".aba-adicional");
+  if (aba) {
+    estado.tipoAdicional = aba.dataset.tipoAdicional;
+    document.querySelectorAll(".aba-adicional").forEach(x => x.classList.toggle("ativa", x === aba));
+    return renderAdicionais();
+  }
+  const adicionar = e.target.closest("[data-adicionar-adicional]");
+  const remover = e.target.closest("[data-remover-adicional]");
+  const salvar = e.target.closest("#salvarAdicionais");
+  if (adicionar || remover) {
+    const nomeProduto = decodeURIComponent((adicionar || remover).dataset[adicionar ? "adicionarAdicional" : "removerAdicional"]);
+    const produto = (estado.adicionais || []).find(item => item.nome === nomeProduto);
+    if (!produto) return;
+    if (adicionar) produto.adicionais.push({ nome: "", preco: "" });
+    else produto.adicionais.splice(Number(remover.dataset.adicionalIndice), 1);
+    estado.adicionaisAlterados = true;
+    return renderAdicionais();
+  }
+  if (!salvar) return;
+  try {
+    salvar.disabled = true;
+    salvar.textContent = "Salvando...";
+    const adicionais = Object.fromEntries((estado.adicionais || []).map(item => [item.nome, (item.adicionais || []).map(adicional => ({
+      nome: String(adicional.nome || "").trim(),
+      preco: String(adicional.preco ?? "").replace(",", ".")
+    }))]));
+    await api("/api/painel/adicionais", { method: "PUT", body: JSON.stringify({ adicionais }) });
+    // Recarrega do servidor para mostrar apenas o que foi gravado de verdade.
+    estado.adicionais = await api(`/api/painel/adicionais?_=${Date.now()}`, { cache: "no-store" });
+    estado.adicionaisAlterados = false;
+    renderAdicionais();
+    toast("Adicionais salvos.");
+  } catch (erro) {
+    toast(erro.message);
+  } finally {
+    salvar.disabled = false;
+    salvar.textContent = "Salvar alterações";
+  }
+});
 document.addEventListener("click",async e=>{const botao=e.target.closest("[data-salvar-descricao]");if(!botao)return;const produto=JSON.parse(decodeURIComponent(botao.dataset.salvarDescricao)),id=encodeURIComponent(JSON.stringify(produto)),campo=document.querySelector('[data-descricao-produto="'+id+'"]');try{botao.disabled=true;await api(produto.tipo==="bebida"?"/api/painel/ingredientes/bebida":"/api/painel/ingredientes/pizza",{method:"PATCH",body:JSON.stringify(produto.tipo==="bebida"?{chave:produto.chave,ingredientes:campo?.value||""}:{nome:produto.chave,ingredientes:campo?.value||""})});estado.ingredientesPizzas=await api("/api/painel/ingredientes");renderIngredientes();toast("Descrição atualizada no cardápio.")}catch(x){toast(x.message)}finally{botao.disabled=false}});
 
 document.addEventListener("input",e=>{if(e.target.id==="buscarImagens")renderImagens()});
