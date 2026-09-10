@@ -1,12 +1,14 @@
 const $ = seletor => document.querySelector(seletor);
 const estado = { dados: null, tipoEstoque: "todos", busca: "", filtro: "todos" };
+const portalPainel = window.MYBOT_PORTAL === "atendente" ? "atendente" : "administrador";
+const guiasPermitidas = portalPainel === "atendente" ? ["pedidos", "historico"] : ["estoque", "precos", "itens", "ingredientes", "imagens", "adicionais", "horario", "taxa", "ajuda"];
 const ZOOM_INICIAL_PIZZARIA = 15;
 
 async function api(url, opcoes = {}) {
   const resposta = await fetch(url, {
     ...opcoes,
     credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...(opcoes.headers || {}) }
+    headers: { "Content-Type": "application/json", "X-MyBot-Portal": portalPainel, ...(opcoes.headers || {}) }
   });
   if (resposta.status === 204) return null;
   const dados = await resposta.json().catch(() => ({}));
@@ -83,6 +85,11 @@ function pedidosDemonstracao() {
 }
 
 async function carregar() {
+  if (portalPainel === "atendente") {
+    estado.dados = await api("/api/painel/dados");
+    render();
+    return;
+  }
   [estado.dados, estado.catalogoPrecos, estado.ingredientesPizzas, estado.imagensProdutos] = await Promise.all([
     api("/api/painel/dados"), api("/api/painel/precos"), api("/api/painel/ingredientes"), api("/api/painel/imagens")
   ]);
@@ -215,7 +222,7 @@ document.addEventListener("change", async evento => {
   } catch (erro) { toast(erro.message); }
 });
 
-$("#loginForm").addEventListener("submit", async evento => { evento.preventDefault(); try { await api("/api/painel/entrar", { method: "POST", body: JSON.stringify({ token: $("#token").value }) }); $("#login").classList.add("oculto"); $("#aplicacao").classList.remove("oculto"); await carregar(); } catch (erro) { $("#loginErro").textContent = erro.message; } });
+$("#loginForm").addEventListener("submit", async evento => { evento.preventDefault(); try { await api("/api/painel/entrar", { method: "POST", body: JSON.stringify({ token: $("#token").value, perfil: portalPainel }) }); $("#login").classList.add("oculto"); $("#aplicacao").classList.remove("oculto"); await carregar(); } catch (erro) { $("#loginErro").textContent = erro.message; } });
 $("#atualizar").addEventListener("click", () => carregar().then(() => toast("Painel atualizado.")).catch(e => toast(e.message)));
 // Indicador somente visual: o status do bot não é alterado pelo painel.
 $("#salvarHorario").addEventListener("click", async () => {
@@ -821,7 +828,7 @@ async function validarSessaoPainel({ atualizarDados = true } = {}) {
   validacaoSessaoEmAndamento = (async () => {
     try {
       const sessao = await api(`/api/painel/sessao?_=${Date.now()}`, { cache: "no-store" });
-      if (!sessao.autenticado) {
+      if (!sessao.autenticado || sessao.perfil !== portalPainel) {
         mostrarLoginPainel();
         return false;
       }
@@ -861,9 +868,26 @@ setInterval(() => { if (!$("#aplicacao").classList.contains("oculto") && podeAtu
 setInterval(atualizarPedidosAutomaticamente, 10000);
 
 // Experiência operacional em guias e estoque por disponibilidade.
-estado.guia = "pedidos";
+estado.guia = portalPainel === "atendente" ? "pedidos" : "estoque";
 estado.fase = "confirmar";
 estado.modalidade = "entrega";
+
+function aplicarRestricoesDoPortal() {
+  document.querySelectorAll(".guia-principal").forEach(botao => {
+    botao.hidden = !guiasPermitidas.includes(botao.dataset.guia);
+  });
+  document.querySelectorAll(".secao-painel").forEach(secao => {
+    secao.hidden = !guiasPermitidas.includes(secao.dataset.secao);
+  });
+  const titulo = portalPainel === "atendente" ? "Portal do atendente" : "Portal administrativo";
+  document.querySelectorAll(".marca-login small").forEach(el => { el.textContent = titulo; });
+  const textoLogin = $("#login .muted");
+  if (textoLogin) textoLogin.textContent = portalPainel === "atendente"
+    ? "Entre com o código do atendente."
+    : "Entre com o código administrativo compartilhado pelo proprietário.";
+}
+
+aplicarRestricoesDoPortal();
 estado.buscaHistorico = "";
 estado.modalidadeHistorico = "todos";
 
@@ -1121,14 +1145,23 @@ renderPedidos = function renderPedidosEmGuias() {
     </article>`;
   }).join("") : `<div class="vazio">Nenhum pedido nesta etapa.</div>`;
 };
+function nomeEstoquePadronizado(tipo, nome) {
+  const prefixos = { pizzas: "Hambúrguer", acompanhamentos: "Acompanhamento", combos: "Combo", bebidas: "Bebida" };
+  const variantes = { pizzas: "hamb[úu]rguer", acompanhamentos: "acompanhamento", combos: "combo", bebidas: "bebida" };
+  let base = String(nome || "").replaceAll("_", " ").trim();
+  const removerPrefixo = new RegExp(`^${variantes[tipo]}(?:\\s+de|\\s*:)?\\s*`, "i");
+  while (removerPrefixo.test(base)) base = base.replace(removerPrefixo, "").trim();
+  return `${prefixos[tipo]}: ${base || "Sem nome"}`;
+}
+
 renderEstoque = function renderEstoqueDisponibilidade() {
   const tipos = estado.tipoEstoque === "todos" ? ["pizzas", "acompanhamentos", "combos", "bebidas"] : [estado.tipoEstoque];
-  const rotulos = { pizzas: "Hambúrguer de", acompanhamentos: "Acompanhamento:", combos: "Combo:", bebidas: "Bebida:" };
+  const rotulos = { pizzas: "Hambúrguer", acompanhamentos: "Acompanhamento", combos: "Combo", bebidas: "Bebida" };
   const busca = normalizarBuscaPainel(estado.busca);
   const produtos = tipos.flatMap(tipo => Object.entries(estado.dados.estoque[tipo] || {}).map(([nome, quantidade]) => ({ tipo, nome, quantidade }))).filter(item => normalizarBuscaPainel(`${item.nome} ${rotulos[item.tipo]}`).includes(busca));
   $("#estoque").innerHTML = produtos.map(({tipo, nome, quantidade}) => {
     const disponivel = Number(quantidade) > 0;
-    return `<div class="produto ${disponivel ? "disponivel" : "esgotado"}"><div><div class="produto-nome">${escapar(`${rotulos[tipo]} ${nome.replaceAll("_", " ")}`)}</div><small class="estado-produto ${disponivel ? "ok" : "off"}">${disponivel ? "Disponível" : "Esgotado"}</small></div><div class="quantidade"><button data-disponibilidade="esgotar" data-tipo="${tipo}" data-chave="${escapar(nome)}" title="Marcar como esgotado">−</button><button data-disponibilidade="liberar" data-tipo="${tipo}" data-chave="${escapar(nome)}" title="Voltar a disponibilizar">+</button></div></div>`;
+    return `<div class="produto ${disponivel ? "disponivel" : "esgotado"}"><div><div class="produto-nome">${escapar(nomeEstoquePadronizado(tipo, nome))}</div><small class="estado-produto ${disponivel ? "ok" : "off"}">${disponivel ? "Disponível" : "Esgotado"}</small></div><div class="quantidade"><button data-disponibilidade="esgotar" data-tipo="${tipo}" data-chave="${escapar(nome)}" title="Marcar como esgotado">−</button><button data-disponibilidade="liberar" data-tipo="${tipo}" data-chave="${escapar(nome)}" title="Voltar a disponibilizar">+</button></div></div>`;
   }).join("") || '<div class="vazio">Nenhum produto encontrado.</div>';
 };
 

@@ -459,11 +459,23 @@ function posicaoOpcaoNoTexto(texto, nome) {
   return -1;
 }
 
+function posicaoAdicionalNoTexto(texto, nome) {
+  const posicaoCompleta = posicaoOpcaoNoTexto(texto, nome);
+  if (posicaoCompleta >= 0) return posicaoCompleta;
+  const nomeCurto = normalizar(nome).replace(/\b(extra|adicional)\b/g, "").replace(/\s+/g, " ").trim();
+  return nomeCurto ? posicaoOpcaoNoTexto(texto, nomeCurto) : -1;
+}
+
 function adicionalFoiMencionadoSeparadamente(mensagem, adicional, catalogoAdicionais = []) {
   if (!adicional) return false;
   const texto = normalizar(mensagem);
-  const termo = normalizar(adicional.nome);
-  if (!termo) return false;
+  const termoCompleto = normalizar(adicional.nome);
+  // "salmão" deve encontrar "salmão extra". O apelido só é aceito quando
+  // estiver fora do nome de um produto, para que "batata" em um combo não
+  // vire automaticamente "batata extra".
+  const termoCurto = termoCompleto.replace(/\b(extra|adicional)\b/g, "").replace(/\s+/g, " ").trim();
+  const termos = [...new Set([termoCompleto, termoCurto].filter(Boolean))];
+  if (!termos.length) return false;
   const produtosCitados = [...new Set(catalogoAdicionais.map(item => item.produto))]
     .map(nome => ({ nome: normalizar(nome), inicio: posicaoOpcaoNoTexto(texto, nome) }))
     .filter(produto => produto.inicio >= 0);
@@ -472,13 +484,15 @@ function adicionalFoiMencionadoSeparadamente(mensagem, adicional, catalogoAdicio
   // QUALQUER produto citado, trata-se de um adicional realmente citado pelo
   // cliente. Isso impede "batata" de ser extra só por constar em "Combo de
   // Frango com Batata Frita", inclusive se a IA tentar ligá-la a outro item.
-  let inicio = texto.indexOf(termo);
-  while (inicio >= 0) {
-    const dentroDoProduto = produtosCitados.some(produto =>
-      inicio >= produto.inicio && inicio < produto.inicio + produto.nome.length
-    );
-    if (!dentroDoProduto) return true;
-    inicio = texto.indexOf(termo, inicio + termo.length);
+  for (const termo of termos) {
+    let inicio = texto.indexOf(termo);
+    while (inicio >= 0) {
+      const dentroDoProduto = produtosCitados.some(produto =>
+        inicio >= produto.inicio && inicio < produto.inicio + produto.nome.length
+      );
+      if (!dentroDoProduto) return true;
+      inicio = texto.indexOf(termo, inicio + termo.length);
+    }
   }
 
   // Mantém a tolerância a pequenos erros de digitação, mas rejeita quando a
@@ -506,7 +520,7 @@ function interpretarAdicionaisLocalmente(mensagem, adicionais) {
     .filter(produto => produto.posicao >= 0);
   const extras = [...new Map(adicionais.map(adicional => [normalizar(adicional.nome), adicional.nome])).values()]
     .filter(nome => adicionais.some(adicional => normalizar(adicional.nome) === normalizar(nome) && adicionalFoiMencionadoSeparadamente(mensagem, adicional, adicionais)))
-    .map(nome => ({ nome, posicao: posicaoOpcaoNoTexto(texto, nome) }))
+    .map(nome => ({ nome, posicao: posicaoAdicionalNoTexto(texto, nome) }))
     .filter(adicional => adicional.posicao >= 0);
   const resultado = [];
 

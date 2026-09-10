@@ -18,7 +18,11 @@ const {
 const router = express.Router();
 const publicDir = path.join(__dirname, "admin-public");
 const DURACAO_SESSAO = 24 * 60 * 60 * 1000;
-const COOKIE_PAINEL = "mybot_painel_seguro";
+const COOKIE_PAINEL_LEGADO = "mybot_painel_seguro";
+const PERFIS_PAINEL = {
+  administrador: { cookie: "mybot_painel_administrador", token: () => String(process.env.PANEL_ADMIN_TOKEN || "").trim() },
+  atendente: { cookie: "mybot_painel_atendente", token: () => String(process.env.PANEL_ATENDENTE_TOKEN || "").trim() }
+};
 const cacheLocalizacaoReversa = new Map();
 const LIMITE_CACHE_LOCALIZACAO = 300;
 const ARQUIVO_FICHAS_PUBLICAS = garantirArquivo("fichasEntregaCompartilhadas.json", "data/fichasEntregaCompartilhadas.json", {});
@@ -63,7 +67,11 @@ function svgFichaPublica(ficha) {
 }
 
 function tokenAdministrador() {
-  return String(process.env.PANEL_ADMIN_TOKEN || "").trim();
+  return PERFIS_PAINEL.administrador.token();
+}
+
+function tokenDoPerfil(perfil) {
+  return PERFIS_PAINEL[perfil]?.token() || "";
 }
 
 function hash(valor) {
@@ -84,20 +92,20 @@ function cookies(req) {
   }).filter(([chave]) => chave));
 }
 
-function criarSessao(res) {
+function criarSessao(res, perfil = "administrador") {
   // A sessão não pode depender da memória do processo: no Render uma próxima
   // chamada pode chegar a outra instância. O cookie é assinado pelo token do
   // painel e continua válido por 24 horas em qualquer instância.
   const emitidoEm = String(Date.now());
   const aleatorio = crypto.randomBytes(24).toString("base64url");
   const conteudo = `${emitidoEm}.${aleatorio}`;
-  const assinatura = crypto.createHmac("sha256", tokenAdministrador()).update(conteudo).digest("base64url");
+  const assinatura = crypto.createHmac("sha256", tokenDoPerfil(perfil)).update(conteudo).digest("base64url");
   const id = `${conteudo}.${assinatura}`;
   res.clearCookie("mybot_painel", { path: "/" });
   // Remove a versão anterior do mesmo cookie. Sem isso, alguns navegadores
   // enviam os dois valores para /api/painel e o servidor pode ler o vencido.
-  res.clearCookie(COOKIE_PAINEL, { path: "/api/painel" });
-  res.cookie(COOKIE_PAINEL, id, {
+  res.clearCookie(COOKIE_PAINEL_LEGADO, { path: "/api/painel" });
+  res.cookie(PERFIS_PAINEL[perfil].cookie, id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
@@ -106,16 +114,38 @@ function criarSessao(res) {
   });
 }
 
+function perfilAutenticado(req, perfilPreferido = "") {
+  const recebidos = cookies(req);
+  const perfis = Object.entries(PERFIS_PAINEL).sort(([a], [b]) => (b === perfilPreferido) - (a === perfilPreferido));
+  for (const [perfil, dados] of perfis) {
+    const id = recebidos[dados.cookie] || (perfil === "administrador" ? recebidos[COOKIE_PAINEL_LEGADO] : "");
+    if (!id || !dados.token()) continue;
+    const partes = String(id).split(".");
+    if (partes.length !== 3) continue;
+    const [emitidoEm, aleatorio, assinatura] = partes;
+    const instante = Number(emitidoEm);
+    if (!Number.isFinite(instante) || instante > Date.now() || Date.now() - instante > DURACAO_SESSAO) continue;
+    const esperada = crypto.createHmac("sha256", dados.token()).update(`${emitidoEm}.${aleatorio}`).digest("base64url");
+    if (compararSeguro(assinatura, esperada)) return perfil;
+  }
+  return null;
+}
+
 function autenticado(req) {
-  const id = cookies(req)[COOKIE_PAINEL];
-  if (!id) return false;
-  const partes = String(id).split(".");
-  if (partes.length !== 3) return false;
-  const [emitidoEm, aleatorio, assinatura] = partes;
-  const instante = Number(emitidoEm);
-  if (!Number.isFinite(instante) || instante > Date.now() || Date.now() - instante > DURACAO_SESSAO) return false;
-  const esperada = crypto.createHmac("sha256", tokenAdministrador()).update(`${emitidoEm}.${aleatorio}`).digest("base64url");
-  return compararSeguro(assinatura, esperada);
+  return Boolean(perfilAutenticado(req));
+}
+
+function limparSessoes(res) {
+  res.clearCookie(COOKIE_PAINEL_LEGADO, { path: "/" });
+  res.clearCookie(COOKIE_PAINEL_LEGADO, { path: "/api/painel" });
+  for (const dados of Object.values(PERFIS_PAINEL)) res.clearCookie(dados.cookie, { path: "/" });
+}
+
+function autenticarPerfil(req, res, next) {
+  const perfil = perfilAutenticado(req, String(req.get("x-mybot-portal") || ""));
+  if (!perfil) return res.status(401).json({ erro: "Acesso expirado ou não autorizado." });
+  req.perfilPainel = perfil;
+  next();
 }
 
 function exigirAutenticacao(req, res, next) {
@@ -124,13 +154,21 @@ function exigirAutenticacao(req, res, next) {
   next();
 }
 
-router.get("/painel/acesso/:token", (req, res) => {
-  const esperado = tokenAdministrador();
+router.get("/painel/acesso/:perfil/:token", (req, res) => {
+  const perfil = req.params.perfil === "atendente" ? "atendente" : "administrador";
+  const esperado = tokenDoPerfil(perfil);
   if (!esperado || !compararSeguro(req.params.token, esperado)) {
     return res.status(404).send("Acesso não encontrado.");
   }
-  criarSessao(res);
-  res.redirect(302, "/painel/");
+  criarSessao(res, perfil);
+  res.redirect(302, `/painel/${perfil === "administrador" ? "adm" : "atendente"}`);
+});
+
+router.get("/painel/acesso/:token", (req, res) => {
+  const esperado = tokenAdministrador();
+  if (!esperado || !compararSeguro(req.params.token, esperado)) return res.status(404).send("Acesso não encontrado.");
+  criarSessao(res, "administrador");
+  res.redirect(302, "/painel/adm");
 });
 
 function urlPublica(req) {
@@ -141,19 +179,21 @@ function urlPublica(req) {
   return `${protocolo || "https"}://${host}`;
 }
 
-function painelComPrevia(req, res) {
+function painelComPrevia(req, res, perfil = "administrador") {
   const arquivo = path.join(publicDir, "index.html");
   const url = urlPublica(req);
   const previa = `\n  <meta property="og:type" content="website">\n  <meta property="og:title" content="MyBot | Painel administrativo">\n  <meta property="og:description" content="Acesse o painel administrativo do MyBot.">\n  <meta property="og:url" content="${url}/painel/">\n  <meta property="og:image" content="${url}/painel/mybot-logo-verde.png">\n  <meta property="og:image:type" content="image/png">\n  <meta property="og:image:alt" content="MyBot">\n  <meta name="twitter:card" content="summary_large_image">`;
   try {
-    const html = fs.readFileSync(arquivo, "utf8").replace("</head>", `${previa}\n</head>`);
+    const inicializacao = `<script>window.MYBOT_PORTAL=${JSON.stringify(perfil)};</script>`;
+    const html = fs.readFileSync(arquivo, "utf8").replace("</head>", `${previa}\n${inicializacao}\n</head>`);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate").type("html").send(html);
   } catch {
     res.sendFile(arquivo);
   }
 }
 
-router.get(["/painel/", "/painel/index.html"], painelComPrevia);
+router.get(["/painel/", "/painel/index.html", "/painel/adm"], (req, res) => painelComPrevia(req, res, "administrador"));
+router.get("/painel/atendente", (req, res) => painelComPrevia(req, res, "atendente"));
 
 router.use("/painel", express.static(publicDir, {
   index: "index.html",
@@ -164,23 +204,30 @@ router.use("/painel", express.static(publicDir, {
 }));
 
 router.get("/api/painel/sessao", (req, res) => {
-  res.json({ autenticado: autenticado(req), configurado: Boolean(tokenAdministrador()) });
+  const perfil = perfilAutenticado(req, String(req.get("x-mybot-portal") || ""));
+  res.json({ autenticado: Boolean(perfil), perfil, configurado: Boolean(tokenAdministrador()), atendenteConfigurado: Boolean(tokenDoPerfil("atendente")) });
 });
 
 router.post("/api/painel/entrar", (req, res) => {
-  const esperado = tokenAdministrador();
+  const perfil = req.body?.perfil === "atendente" ? "atendente" : "administrador";
+  const esperado = tokenDoPerfil(perfil);
   if (!esperado || !compararSeguro(req.body?.token || "", esperado)) {
     return res.status(401).json({ erro: "Código de acesso incorreto." });
   }
-  criarSessao(res);
-  res.json({ autenticado: true });
+  criarSessao(res, perfil);
+  res.json({ autenticado: true, perfil });
 });
 
 router.post("/api/painel/sair", exigirAutenticacao, (req, res) => {
-  res.clearCookie(COOKIE_PAINEL, { path: "/" });
-  res.clearCookie(COOKIE_PAINEL, { path: "/api/painel" });
-  res.clearCookie("mybot_painel", { path: "/" });
+  limparSessoes(res);
   res.sendStatus(204);
+});
+
+router.use("/api/painel", autenticarPerfil, (req, res, next) => {
+  const rotaAtendimento = req.path === "/dados" || req.path.startsWith("/pedidos/") || req.path === "/ficha-entrega";
+  if (req.perfilPainel === "atendente" && !rotaAtendimento) return res.status(403).json({ erro: "Esta área é exclusiva do portal administrativo." });
+  if (req.perfilPainel === "administrador" && req.path.startsWith("/pedidos/")) return res.status(403).json({ erro: "Pedidos são atendidos somente no portal do atendente." });
+  next();
 });
 
 // Cria um link temporário, compartilhável apenas por quem o recebeu, para a
@@ -386,7 +433,11 @@ router.delete("/api/painel/imagens/:tipo/:chave", exigirAutenticacao, (req, res)
 });
 
 router.get("/api/painel/dados", exigirAutenticacao, (req, res) => {
-  res.json(obterDadosPainel());
+  const dados = obterDadosPainel();
+  // O administrador não usa nem recebe dados operacionais de pedidos; essa
+  // informação pertence exclusivamente ao portal do atendente.
+  if (req.perfilPainel === "administrador") dados.pedidos = [];
+  res.json(dados);
 });
 
 router.post("/api/painel/catalogo/item", exigirAutenticacao, (req,res)=>{try{

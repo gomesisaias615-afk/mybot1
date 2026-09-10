@@ -21,8 +21,26 @@ function errosDeVinculoAdicional(texto, disponiveis) {
     .filter(produto => entrada.includes(normalizar(produto)) || entradaFlexivel.includes(nomeFlexivel(produto)));
   if (!produtosCitados.length) return [];
 
+  const adicionalFoiMencionado = nome => {
+    const completo = normalizar(nome);
+    const curto = completo.replace(/\b(extra|adicional)\b/g, "").replace(/\s+/g, " ").trim();
+    const termos = [...new Set([completo, curto].filter(Boolean))];
+    return termos.some(termo => {
+      let inicio = entrada.indexOf(termo);
+      while (inicio >= 0) {
+        const dentroDeProduto = produtosCitados.some(produto => {
+          const nomeProduto = normalizar(produto);
+          const inicioProduto = entrada.indexOf(nomeProduto);
+          return inicioProduto >= 0 && inicio >= inicioProduto && inicio < inicioProduto + nomeProduto.length;
+        });
+        if (!dentroDeProduto) return true;
+        inicio = entrada.indexOf(termo, inicio + termo.length);
+      }
+      return false;
+    });
+  };
   const nomesAdicionais = [...new Set(disponiveis.map(item => item.nome))]
-    .filter(nome => entrada.includes(normalizar(nome)));
+    .filter(adicionalFoiMencionado);
   return nomesAdicionais.flatMap(nome => {
     const opcoes = disponiveis.filter(item => normalizar(item.nome) === normalizar(nome));
     if (opcoes.some(item => produtosCitados.some(produto => normalizar(produto) === normalizar(item.produto)))) return [];
