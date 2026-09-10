@@ -787,7 +787,31 @@ function mostrarLoginPainel() {
 // Não atualiza dados automaticamente enquanto o atendente está preenchendo
 // uma área de edição. Assim o texto digitado não é substituído pelo servidor.
 function podeAtualizarDadosAutomaticamente() {
-  return !["itens", "ingredientes", "precos", "imagens", "horario", "taxa", "adicionais"].includes(estado.guia);
+  return !["pedidos", "itens", "ingredientes", "precos", "imagens", "horario", "taxa", "adicionais"].includes(estado.guia);
+}
+
+// Pedidos precisam chegar ao atendente sem atualizar o painel inteiro. A
+// atualização completa apaga campos que alguém pode estar preenchendo em
+// outras abas; aqui buscamos somente os dados operacionais e redesenhamos os
+// cartões quando a aba Pedidos estiver visível.
+let atualizacaoPedidosEmAndamento = false;
+async function atualizarPedidosAutomaticamente() {
+  if (
+    atualizacaoPedidosEmAndamento ||
+    estado.guia !== "pedidos" ||
+    $("#aplicacao").classList.contains("oculto")
+  ) return;
+
+  atualizacaoPedidosEmAndamento = true;
+  try {
+    estado.dados = await api(`/api/painel/dados?_=${Date.now()}`, { cache: "no-store" });
+    renderPedidos();
+  } catch {
+    // A verificação de sessão existente continua responsável por mostrar o
+    // login se ela expirar; uma falha momentânea não deve retirar o painel.
+  } finally {
+    atualizacaoPedidosEmAndamento = false;
+  }
 }
 
 async function validarSessaoPainel({ atualizarDados = true } = {}) {
@@ -834,6 +858,7 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 setInterval(() => { if (!$("#aplicacao").classList.contains("oculto") && podeAtualizarDadosAutomaticamente()) carregar().catch(() => {}); }, 30000);
+setInterval(atualizarPedidosAutomaticamente, 10000);
 
 // Experiência operacional em guias e estoque por disponibilidade.
 estado.guia = "pedidos";
@@ -862,6 +887,7 @@ function aplicarGuia(nome) {
   estado.guia = nome;
   document.querySelectorAll(".guia-principal").forEach(botao => botao.classList.toggle("ativa", botao.dataset.guia === nome));
   document.querySelectorAll(".secao-painel").forEach(secao => secao.classList.toggle("ativa", secao.dataset.secao === nome));
+  if (nome === "pedidos") atualizarPedidosAutomaticamente();
   if (nome === "historico") renderHistorico();
 }
 
@@ -914,13 +940,19 @@ function formatarPizzaCompleta(item) {
   const quantidade = Math.max(1, Number(item?.quantidade) || 1);
   const saboresOriginais = Array.isArray(item?.sabores) && item.sabores.length ? item.sabores : [item?.sabor];
   const sabores = saboresOriginais.filter(Boolean).map(nomeProdutoCompleto).join(" e ") || "Sabor não informado";
-  const produto = /^hambúrgueres?\b/i.test(sabores) ? sabores : `${quantidade === 1 ? "Hambúrguer" : "Hambúrgueres"} de ${sabores}`;
-  return `${quantidade}× ${produto} — Tamanho ${tamanhoPizzaCompleto(item?.tamanho)}`;
+  const categoriaCatalogo = estado.catalogoPrecos?.categoriasProdutos?.[item?.sabor || saboresOriginais[0]];
+  const categoria = item?.categoria || categoriaCatalogo || "tradicionais";
+  const produto = categoria === "doces"
+    ? `Combo: ${sabores}`
+    : categoria === "especiais"
+      ? `Acompanhamento: ${sabores}`
+      : /^hambúrgueres?\b/i.test(sabores) ? sabores : `Hambúrguer de ${sabores}`;
+  return `${quantidade}× ${produto}`;
 }
 
 function formatarBebidaCompleta(item) {
   const quantidade = Math.max(1, Number(item?.quantidade) || 1);
-  return `${quantidade}× ${nomeProdutoCompleto(item?.nome || item?.chave) || "Bebida não informada"}`;
+  return `${quantidade}× Bebida: ${nomeProdutoCompleto(item?.nome || item?.chave) || "Bebida não informada"}`;
 }
 
 function detalhesPagamento(pedido, recebimento) {

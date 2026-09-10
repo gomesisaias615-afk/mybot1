@@ -16,7 +16,7 @@ const temGrupoPromocoes = /^https?:\/\//i.test(grupoWhatsApp);
 const { obterIdentidade } = require("../services/identidade.service");
 const nomePizzaria = obterIdentidade().nome;
 const opcoesMenu = [
-  "1️⃣ *🍔 Fazer pedido*",
+  "1️⃣ *Fazer pedido*",
   temInstagram ? "2️⃣ *Instagram*" : "",
   temGrupoPromocoes ? "3️⃣ *Ofertas*" : "",
   "4️⃣ *Contato MyBot*"

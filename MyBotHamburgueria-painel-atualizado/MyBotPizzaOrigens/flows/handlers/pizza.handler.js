@@ -140,12 +140,17 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
     }
 
     const catalogoPromos = catalogo().promocoes || { pizzas: {}, bebidas: {} };
+    const categoriaPorProduto = new Map(opcoes.map(produto => [produto.nome, produto.categoria]));
     contexto.carrinhoPizza[user] ||= [];
     contexto.carrinhoBebida[user] ||= [];
 
     for (const item of interpretacao.itens) {
       contexto.carrinhoPizza[user].push({
         ...item,
+        // Mantemos o tipo verdadeiro no pedido. O nome interno ainda usa
+        // carrinhoPizza por compatibilidade, mas o painel não deve chamar um
+        // combo ou acompanhamento de hambúrguer.
+        categoria: categoriaPorProduto.get(item.sabor) || "tradicionais",
         valor: Math.max(...item.sabores.map(sabor => Number(precosPizzas[sabor][item.tamanho]))),
         promocao: item.sabores.map(sabor => catalogoPromos.pizzas?.[sabor]?.[item.tamanho]).find(ativa) || null
       });
