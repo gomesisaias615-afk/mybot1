@@ -406,7 +406,9 @@ async function interpretarAdicionaisComGroq(mensagem, adicionais) {
       .filter(opcao => normalizar(opcao.produto) === normalizar(produto.nome))
       .map(opcao => ({ nome: opcao.nome, adicional: opcao }))
     )?.adicional;
-    adicionarSeValido(adicional);
+    // Uma palavra que aparece apenas dentro do nome do produto não é um
+    // adicional. Ex.: "Batata" em "Combo de Frango com Batata Frita".
+    if (adicionalFoiMencionadoSeparadamente(mensagem, adicional)) adicionarSeValido(adicional);
   }
 
   // A IA é auxiliada por uma leitura local. Isso cobre frases naturais como
@@ -434,12 +436,45 @@ function posicaoOpcaoNoTexto(texto, nome) {
   return -1;
 }
 
+function adicionalFoiMencionadoSeparadamente(mensagem, adicional) {
+  if (!adicional) return false;
+  const texto = normalizar(mensagem);
+  const termo = normalizar(adicional.nome);
+  const produto = normalizar(adicional.produto);
+  if (!termo) return false;
+
+  // Procura todas as ocorrências exatas. Se houver uma fora do nome do
+  // produto, trata-se de um adicional realmente citado pelo cliente.
+  let inicio = texto.indexOf(termo);
+  while (inicio >= 0) {
+    let produtoInicio = texto.indexOf(produto);
+    let dentroDoProduto = false;
+    while (produtoInicio >= 0) {
+      if (inicio >= produtoInicio && inicio < produtoInicio + produto.length) {
+        dentroDoProduto = true;
+        break;
+      }
+      produtoInicio = texto.indexOf(produto, produtoInicio + produto.length);
+    }
+    if (!dentroDoProduto) return true;
+    inicio = texto.indexOf(termo, inicio + termo.length);
+  }
+
+  // Mantém a tolerância a pequenos erros de digitação, mas rejeita quando a
+  // melhor correspondência está dentro do próprio nome do produto.
+  const aproximada = posicaoOpcaoNoTexto(texto, adicional.nome);
+  const produtoInicio = posicaoOpcaoNoTexto(texto, adicional.produto);
+  return aproximada >= 0 && !(produtoInicio >= 0 &&
+    aproximada >= produtoInicio && aproximada < produtoInicio + produto.length);
+}
+
 function interpretarAdicionaisLocalmente(mensagem, adicionais) {
   const texto = normalizar(mensagem);
   const produtos = [...new Map(adicionais.map(adicional => [normalizar(adicional.produto), adicional.produto])).values()]
     .map(nome => ({ nome, posicao: posicaoOpcaoNoTexto(texto, nome) }))
     .filter(produto => produto.posicao >= 0);
   const extras = [...new Map(adicionais.map(adicional => [normalizar(adicional.nome), adicional.nome])).values()]
+    .filter(nome => adicionais.some(adicional => normalizar(adicional.nome) === normalizar(nome) && adicionalFoiMencionadoSeparadamente(mensagem, adicional)))
     .map(nome => ({ nome, posicao: posicaoOpcaoNoTexto(texto, nome) }))
     .filter(adicional => adicional.posicao >= 0);
   const resultado = [];
