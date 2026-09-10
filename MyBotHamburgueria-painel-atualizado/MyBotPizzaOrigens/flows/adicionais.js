@@ -50,9 +50,11 @@ function formatarAdicionais(adicionais) {
     porProduto.set(adicional.produto, lista);
   }
   const icone = categoria => categoria === "doces" ? "🎁" : "🍔";
-  return `╭━━━━━━ *CARDÁPIO DE ADICIONAIS* ━━━━━━╮\n\n${[...porProduto.entries()].map(([produto, lista]) =>
-    `${icone(lista[0]?.categoria)} *${produto}*\n${lista.map(item => `   • ${item.nome} — *R$ ${item.valor.toFixed(2).replace(".", ",")}*`).join("\n")}`
-  ).join("\n\n")}\n\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯`;
+  return `✨ *ADICIONAIS DISPONÍVEIS*\n` +
+    [...porProduto.entries()].map(([produto, lista]) =>
+      `\n${icone(lista[0]?.categoria)} *${produto}*\n${lista.map(item => `   • ${item.nome} — *R$ ${item.valor.toFixed(2).replace(".", ",")}*`).join("\n")}`
+    ).join("\n") +
+    "\n\n_Digite o adicional junto com o produto._";
 }
 
 function palavrasRelevantes(valor) {

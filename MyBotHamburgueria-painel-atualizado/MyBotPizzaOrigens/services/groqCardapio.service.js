@@ -209,6 +209,7 @@ async function consultarGroq(mensagem, opcoes, tipo) {
     ? `Reconheça um ou vários adicionais da mesma mensagem. Cada item deve trazer o nome EXATO do produto e o nome EXATO do adicional presentes no CATÁLOGO.
 Exemplo: "bacon no Combo da casa e cheddar no X-Salada" resulta em {"itens":[{"produto":"Combo da casa","adicional":"Bacon"},{"produto":"X-Salada","adicional":"Cheddar"}],"erro":null}.
 Se o cliente escrever "bacon e ovo no Combo de Frango", retorne DOIS itens, ambos para "Combo de Frango". Um adicional citado uma vez vale para somente uma unidade daquele produto, mesmo que ele tenha pedido 2 unidades do produto.
+Nunca copie um adicional para outro produto: se o cliente disser "bacon no X-Salada e cheddar no Combo", bacon pertence somente ao X-Salada e cheddar somente ao Combo. Se a associação estiver ambígua, retorne erro em vez de adivinhar.
 Responda exclusivamente em JSON.`
     : tipo === "pizza"
     ? `Cada produto deve ser um item separado. Reconheça hambúrgueres, acompanhamentos e combos pelo CATÁLOGO. Não existe tamanho de produto.
@@ -395,6 +396,7 @@ async function interpretarAdicionaisComGroq(mensagem, adicionais) {
   }
 
   const selecionados = [];
+  const leituraLocal = interpretarAdicionaisLocalmente(mensagem, adicionais);
   const adicionarSeValido = adicional => {
     if (adicional && !selecionados.some(atual =>
       normalizar(atual.produto) === normalizar(adicional.produto) && normalizar(atual.nome) === normalizar(adicional.nome)
@@ -408,13 +410,15 @@ async function interpretarAdicionaisComGroq(mensagem, adicionais) {
     )?.adicional;
     // Uma palavra que aparece apenas dentro do nome do produto não é um
     // adicional. Ex.: "Batata" em "Combo de Frango com Batata Frita".
-    if (adicionalFoiMencionadoSeparadamente(mensagem, adicional)) adicionarSeValido(adicional);
+    const associacoesLocaisDoMesmoAdicional = leituraLocal.filter(local => normalizar(local.nome) === normalizar(adicional?.nome));
+    const associadoAoProdutoCerto = !associacoesLocaisDoMesmoAdicional.length || associacoesLocaisDoMesmoAdicional.some(local => normalizar(local.produto) === normalizar(adicional?.produto));
+    if (associadoAoProdutoCerto && adicionalFoiMencionadoSeparadamente(mensagem, adicional)) adicionarSeValido(adicional);
   }
 
   // A IA é auxiliada por uma leitura local. Isso cobre frases naturais como
   // "bacon e ovo no combo" e preserva associações diferentes em uma mesma
   // mensagem caso a resposta da IA omita um dos adicionais.
-  for (const adicional of interpretarAdicionaisLocalmente(mensagem, adicionais)) adicionarSeValido(adicional);
+  for (const adicional of leituraLocal) adicionarSeValido(adicional);
 
   if (!selecionados.length && resultado.erro) throw new Error(String(resultado.erro));
   return selecionados;

@@ -425,10 +425,23 @@ router.get("/api/painel/adicionais", exigirAutenticacao, (req,res)=>{
   res.json(Object.keys(catalogo.pizzas||{}).filter(nome=>tipo(nome)!=="acompanhamentos").map(nome=>({nome,tipo:tipo(nome),adicionais:Array.isArray(salvos[nome])?salvos[nome]:[]})));
 });
 router.put("/api/painel/adicionais", exigirAutenticacao, (req,res)=>{try{
-  const recebidos=req.body?.adicionais||{},catalogo=precos.catalogo(),permitidos=new Set(Object.keys(catalogo.pizzas||{})),salvar={};
-  for(const [produto,itens] of Object.entries(recebidos)){
-    if(!permitidos.has(produto))continue;
-    const limpos=(Array.isArray(itens)?itens:[]).map(item=>({nome:String(item?.nome||"").trim(),preco:Number(item?.preco)})).filter(item=>item.nome&&item.nome.length<=80&&Number.isFinite(item.preco)&&item.preco>0&&item.preco<=5000);
+  const recebidos=req.body?.adicionais||{},catalogo=precos.catalogo(),configuracao=JSON.parse(fs.readFileSync(garantirArquivo("configuracaoCardapio.json","data/configuracaoCardapio.json",{}),"utf8"));
+  const normalizar=valor=>String(valor||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  const categoriaPorNome=Object.fromEntries(Object.entries(configuracao.pizzasPorCategoria||{}).flatMap(([categoria,nomes])=>(nomes||[]).map(nome=>[nome,categoria])));
+  const permitidos=Object.keys(catalogo.pizzas||{}).filter(nome=>["tradicionais","doces"].includes(categoriaPorNome[nome]||"tradicionais"));
+  const salvar={};
+  for(const [produtoRecebido,itens] of Object.entries(recebidos)){
+    const produto=permitidos.find(nome=>normalizar(nome)===normalizar(produtoRecebido));
+    if(!produto)continue;
+    const linhas=Array.isArray(itens)?itens:[];
+    const limpos=[];
+    for(const item of linhas){
+      const nome=String(item?.nome||"").trim();
+      const preco=Number(String(item?.preco??"").replace(",","."));
+      if(!nome)continue;
+      if(nome.length>80||!Number.isFinite(preco)||preco<=0||preco>5000)throw Error(`Informe um valor válido para o adicional "${nome}".`);
+      limpos.push({nome,preco});
+    }
     if(limpos.length>20)throw Error("Cada produto pode ter no máximo 20 adicionais.");
     if(limpos.length)salvar[produto]=limpos;
   }

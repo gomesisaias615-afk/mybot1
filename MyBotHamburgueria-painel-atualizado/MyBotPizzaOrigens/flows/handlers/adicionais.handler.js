@@ -100,15 +100,15 @@ ${formatarAdicionais(disponiveis)}`);
 
   contexto.adicionaisPendentes[user] = selecionados;
   const itensConfirmados = selecionados.map(adicional =>
-    `➕ *${adicional.nome}*\n🍔 Produto: *${adicional.produto}*\n💰 Valor: *R$ ${adicional.valor.toFixed(2).replace(".", ",")}*`
-  ).join("\n\n━━━━━━━━━━━━━━━━━━━━\n\n");
-  await msg.reply(`╭━━━━━━━━━━━━━━━━━━━━╮
-     ✅ *ADICIONAL(IS) INCLUÍDO(S)*
-╰━━━━━━━━━━━━━━━━━━━━╯
+    `• *${adicional.nome}* — R$ ${adicional.valor.toFixed(2).replace(".", ",")}\n  ↳ ${adicional.produto}`
+  ).join("\n\n");
+  await msg.reply(`✅ *CONFIRA OS ADICIONAIS*
 
-${itensConfirmados}`);
+${itensConfirmados}
+
+────────────────────`);
   contexto.estados[user] = "confirmar_adicionais";
-  await msg.reply("Os adicionais acima estão corretos?\n\n1️⃣ Sim\n2️⃣ Não");
+  await msg.reply("Está tudo certo?\n\n1️⃣ Confirmar\n2️⃣ Corrigir");
   return true;
 }
 
