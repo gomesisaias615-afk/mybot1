@@ -14,8 +14,11 @@ Exemplos: “Sem cebola” ou “Carne mal passada”.
 
 function errosDeVinculoAdicional(texto, disponiveis) {
   const entrada = normalizar(texto);
+  const nomeFlexivel = valor => normalizar(valor).split(" ")
+    .filter(palavra => !["de", "da", "do", "das", "dos", "com", "e"].includes(palavra)).join(" ");
+  const entradaFlexivel = nomeFlexivel(entrada);
   const produtosCitados = [...new Set(disponiveis.map(item => item.produto))]
-    .filter(produto => entrada.includes(normalizar(produto)));
+    .filter(produto => entrada.includes(normalizar(produto)) || entradaFlexivel.includes(nomeFlexivel(produto)));
   if (!produtosCitados.length) return [];
 
   const nomesAdicionais = [...new Set(disponiveis.map(item => item.nome))]

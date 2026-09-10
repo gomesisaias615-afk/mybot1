@@ -441,6 +441,21 @@ function posicaoOpcaoNoTexto(texto, nome) {
       return palavras.slice(0, indice).join(" ").length + (indice ? 1 : 0);
     }
   }
+
+  // Aceita conectivos omitidos pelo cliente: "combo 2 pizzas" encontra
+  // "combo de 2 pizzas", sem associar o adicional a outro produto.
+  const ignorar = new Set(["de", "da", "do", "das", "dos", "com", "e"]);
+  const termoFlexivel = partes.filter(palavra => !ignorar.has(palavra));
+  for (let indice = 0; indice < palavras.length; indice++) {
+    const janela = palavras.slice(indice, indice + termoFlexivel.length);
+    if (janela.length !== termoFlexivel.length) continue;
+    const trecho = janela.join(" ");
+    const esperado = termoFlexivel.join(" ");
+    const limite = Math.max(1, Math.floor(esperado.length * 0.2));
+    if (distanciaLevenshtein(trecho, esperado) <= limite) {
+      return palavras.slice(0, indice).join(" ").length + (indice ? 1 : 0);
+    }
+  }
   return -1;
 }
 
