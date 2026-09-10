@@ -63,13 +63,14 @@ ${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
 
   contexto.adicionais[user] ||= [];
   contexto.adicionais[user].push(adicional);
-  contexto.estados[user] = "adicionar_outro_adicional";
-  await msg.reply(`✅ *${adicional.nome}* adicionado em *${adicional.produto}* — R$ ${adicional.valor.toFixed(2).replace(".", ",")}.
+  await msg.reply(`╭━━━━━━━━━━━━━━━━━━━━╮
+      ✅ *ADICIONAL INCLUÍDO*
+╰━━━━━━━━━━━━━━━━━━━━╯
 
-Deseja adicionar mais algum item?
-
-1️⃣ Sim
-2️⃣ Não`);
+➕ *${adicional.nome}*
+🍔 Produto: *${adicional.produto}*
+💰 Valor: *R$ ${adicional.valor.toFixed(2).replace(".", ",")}*`);
+  await perguntarObservacao(msg, user, contexto);
   return true;
 }
 
