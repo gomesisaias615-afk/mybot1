@@ -412,7 +412,7 @@ async function interpretarAdicionaisComGroq(mensagem, adicionais) {
     // adicional. Ex.: "Batata" em "Combo de Frango com Batata Frita".
     const associacoesLocaisDoMesmoAdicional = leituraLocal.filter(local => normalizar(local.nome) === normalizar(adicional?.nome));
     const associadoAoProdutoCerto = !associacoesLocaisDoMesmoAdicional.length || associacoesLocaisDoMesmoAdicional.some(local => normalizar(local.produto) === normalizar(adicional?.produto));
-    if (associadoAoProdutoCerto && adicionalFoiMencionadoSeparadamente(mensagem, adicional)) adicionarSeValido(adicional);
+    if (associadoAoProdutoCerto && adicionalFoiMencionadoSeparadamente(mensagem, adicional, adicionais)) adicionarSeValido(adicional);
   }
 
   // A IA é auxiliada por uma leitura local. Isso cobre frases naturais como
@@ -440,26 +440,24 @@ function posicaoOpcaoNoTexto(texto, nome) {
   return -1;
 }
 
-function adicionalFoiMencionadoSeparadamente(mensagem, adicional) {
+function adicionalFoiMencionadoSeparadamente(mensagem, adicional, catalogoAdicionais = []) {
   if (!adicional) return false;
   const texto = normalizar(mensagem);
   const termo = normalizar(adicional.nome);
-  const produto = normalizar(adicional.produto);
   if (!termo) return false;
+  const produtosCitados = [...new Set(catalogoAdicionais.map(item => item.produto))]
+    .map(nome => ({ nome: normalizar(nome), inicio: posicaoOpcaoNoTexto(texto, nome) }))
+    .filter(produto => produto.inicio >= 0);
 
   // Procura todas as ocorrências exatas. Se houver uma fora do nome do
-  // produto, trata-se de um adicional realmente citado pelo cliente.
+  // QUALQUER produto citado, trata-se de um adicional realmente citado pelo
+  // cliente. Isso impede "batata" de ser extra só por constar em "Combo de
+  // Frango com Batata Frita", inclusive se a IA tentar ligá-la a outro item.
   let inicio = texto.indexOf(termo);
   while (inicio >= 0) {
-    let produtoInicio = texto.indexOf(produto);
-    let dentroDoProduto = false;
-    while (produtoInicio >= 0) {
-      if (inicio >= produtoInicio && inicio < produtoInicio + produto.length) {
-        dentroDoProduto = true;
-        break;
-      }
-      produtoInicio = texto.indexOf(produto, produtoInicio + produto.length);
-    }
+    const dentroDoProduto = produtosCitados.some(produto =>
+      inicio >= produto.inicio && inicio < produto.inicio + produto.nome.length
+    );
     if (!dentroDoProduto) return true;
     inicio = texto.indexOf(termo, inicio + termo.length);
   }
@@ -467,9 +465,9 @@ function adicionalFoiMencionadoSeparadamente(mensagem, adicional) {
   // Mantém a tolerância a pequenos erros de digitação, mas rejeita quando a
   // melhor correspondência está dentro do próprio nome do produto.
   const aproximada = posicaoOpcaoNoTexto(texto, adicional.nome);
-  const produtoInicio = posicaoOpcaoNoTexto(texto, adicional.produto);
-  return aproximada >= 0 && !(produtoInicio >= 0 &&
-    aproximada >= produtoInicio && aproximada < produtoInicio + produto.length);
+  return aproximada >= 0 && !produtosCitados.some(produto =>
+    aproximada >= produto.inicio && aproximada < produto.inicio + produto.nome.length
+  );
 }
 
 function interpretarAdicionaisLocalmente(mensagem, adicionais) {
@@ -478,7 +476,7 @@ function interpretarAdicionaisLocalmente(mensagem, adicionais) {
     .map(nome => ({ nome, posicao: posicaoOpcaoNoTexto(texto, nome) }))
     .filter(produto => produto.posicao >= 0);
   const extras = [...new Map(adicionais.map(adicional => [normalizar(adicional.nome), adicional.nome])).values()]
-    .filter(nome => adicionais.some(adicional => normalizar(adicional.nome) === normalizar(nome) && adicionalFoiMencionadoSeparadamente(mensagem, adicional)))
+    .filter(nome => adicionais.some(adicional => normalizar(adicional.nome) === normalizar(nome) && adicionalFoiMencionadoSeparadamente(mensagem, adicional, adicionais)))
     .map(nome => ({ nome, posicao: posicaoOpcaoNoTexto(texto, nome) }))
     .filter(adicional => adicional.posicao >= 0);
   const resultado = [];
