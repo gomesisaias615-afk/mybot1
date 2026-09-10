@@ -29,7 +29,7 @@ function mostrarMenu(msg, user) {
 
 const ESTADOS_TEXTO_LIVRE = new Set([
   "pedido_pizza", "pedido_bebida", "digitar_observacao_pizza",
-  "confirmar_pizza", "perguntar_adicionais", "escolher_adicional", "adicionar_outro_adicional", "perguntar_observacao_pizza", "confirmar_bebida",
+  "confirmar_pizza", "perguntar_adicionais", "escolher_adicional", "confirmar_adicionais", "adicionar_outro_adicional", "perguntar_observacao_pizza", "confirmar_bebida",
   "confirmar_resumo", "conf_contato", "conf_rua", "conf_numero", "conf_bairro",
   "complemento_pergunta", "referencia_pergunta", "confirmar_endereco",
   "endereco_contato", "endereco_rua", "endereco_numero", "endereco_bairro",

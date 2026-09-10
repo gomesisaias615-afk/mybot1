@@ -30,7 +30,7 @@ Deseja adicionar algum item?
 
 async function tratarAdicionais({ msg, user, contexto }) {
   const estado = contexto.estados[user];
-  if (!['perguntar_adicionais', 'escolher_adicional', 'adicionar_outro_adicional'].includes(estado)) return false;
+  if (!['perguntar_adicionais', 'escolher_adicional', 'confirmar_adicionais', 'adicionar_outro_adicional'].includes(estado)) return false;
 
   if (estado === "perguntar_adicionais") {
     if (respostaNao(msg.body)) { await perguntarObservacao(msg, user, contexto); return true; }
@@ -54,6 +54,33 @@ ${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
     return true;
   }
 
+  if (estado === "confirmar_adicionais") {
+    if (respostaSim(msg.body)) {
+      const pendentes = contexto.adicionaisPendentes[user] || [];
+      contexto.adicionais[user] ||= [];
+      for (const adicional of pendentes) {
+        if (!contexto.adicionais[user].some(atual =>
+          atual.produto === adicional.produto && atual.nome === adicional.nome
+        )) contexto.adicionais[user].push(adicional);
+      }
+      delete contexto.adicionaisPendentes[user];
+      await perguntarObservacao(msg, user, contexto);
+      return true;
+    }
+    if (respostaNao(msg.body)) {
+      delete contexto.adicionaisPendentes[user];
+      contexto.estados[user] = "escolher_adicional";
+      await msg.reply(`Sem problema. Digite novamente os adicionais e os produtos.
+
+Exemplo: “Bacon e ovo no Combo de Frango”.
+
+${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
+      return true;
+    }
+    await msg.reply("Responda com 1 para confirmar os adicionais ou 2 para corrigir.");
+    return true;
+  }
+
   const disponiveis = contexto.adicionaisDisponiveis[user] || [];
   let selecionados = [];
   try {
@@ -71,8 +98,7 @@ ${formatarAdicionais(disponiveis)}`);
     return true;
   }
 
-  contexto.adicionais[user] ||= [];
-  contexto.adicionais[user].push(...selecionados);
+  contexto.adicionaisPendentes[user] = selecionados;
   const itensConfirmados = selecionados.map(adicional =>
     `➕ *${adicional.nome}*\n🍔 Produto: *${adicional.produto}*\n💰 Valor: *R$ ${adicional.valor.toFixed(2).replace(".", ",")}*`
   ).join("\n\n━━━━━━━━━━━━━━━━━━━━\n\n");
@@ -81,7 +107,8 @@ ${formatarAdicionais(disponiveis)}`);
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
 ${itensConfirmados}`);
-  await perguntarObservacao(msg, user, contexto);
+  contexto.estados[user] = "confirmar_adicionais";
+  await msg.reply("Os adicionais acima estão corretos?\n\n1️⃣ Sim\n2️⃣ Não");
   return true;
 }
 

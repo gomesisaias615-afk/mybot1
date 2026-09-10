@@ -208,6 +208,7 @@ async function consultarGroq(mensagem, opcoes, tipo) {
   const formatoResposta = tipo === "adicional"
     ? `Reconheça um ou vários adicionais da mesma mensagem. Cada item deve trazer o nome EXATO do produto e o nome EXATO do adicional presentes no CATÁLOGO.
 Exemplo: "bacon no Combo da casa e cheddar no X-Salada" resulta em {"itens":[{"produto":"Combo da casa","adicional":"Bacon"},{"produto":"X-Salada","adicional":"Cheddar"}],"erro":null}.
+Se o cliente escrever "bacon e ovo no Combo de Frango", retorne DOIS itens, ambos para "Combo de Frango". Um adicional citado uma vez vale para somente uma unidade daquele produto, mesmo que ele tenha pedido 2 unidades do produto.
 Responda exclusivamente em JSON.`
     : tipo === "pizza"
     ? `Cada produto deve ser um item separado. Reconheça hambúrgueres, acompanhamentos e combos pelo CATÁLOGO. Não existe tamanho de produto.
@@ -381,6 +382,8 @@ async function interpretarAdicionaisComGroq(mensagem, adicionais) {
   try {
     resultado = await consultarGroq(mensagem, adicionais, "adicional");
   } catch (erro) {
+    const leituraLocal = interpretarAdicionaisLocalmente(mensagem, adicionais);
+    if (leituraLocal.length) return leituraLocal;
     throw new Error(`Não foi possível consultar a IA para os adicionais: ${erro.message}`);
   }
 
@@ -392,20 +395,83 @@ async function interpretarAdicionaisComGroq(mensagem, adicionais) {
   }
 
   const selecionados = [];
-  for (const item of resultado.itens) {
-    const produto = normalizar(item?.produto);
-    const nome = normalizar(item?.adicional);
-    const adicional = adicionais.find(opcao =>
-      normalizar(opcao.produto) === produto && normalizar(opcao.nome) === nome
-    );
+  const adicionarSeValido = adicional => {
     if (adicional && !selecionados.some(atual =>
       normalizar(atual.produto) === normalizar(adicional.produto) && normalizar(atual.nome) === normalizar(adicional.nome)
     )) selecionados.push(adicional);
+  };
+  for (const item of resultado.itens) {
+    const produto = localizarOpcao(item?.produto, [...new Map(adicionais.map(opcao => [normalizar(opcao.produto), { nome: opcao.produto }])).values()]);
+    const adicional = produto && localizarOpcao(item?.adicional, adicionais
+      .filter(opcao => normalizar(opcao.produto) === normalizar(produto.nome))
+      .map(opcao => ({ nome: opcao.nome, adicional: opcao }))
+    )?.adicional;
+    adicionarSeValido(adicional);
   }
+
+  // A IA é auxiliada por uma leitura local. Isso cobre frases naturais como
+  // "bacon e ovo no combo" e preserva associações diferentes em uma mesma
+  // mensagem caso a resposta da IA omita um dos adicionais.
+  for (const adicional of interpretarAdicionaisLocalmente(mensagem, adicionais)) adicionarSeValido(adicional);
 
   if (!selecionados.length && resultado.erro) throw new Error(String(resultado.erro));
   return selecionados;
 }
 
-module.exports = { interpretarComGroq, interpretarLocalmente, interpretarAdicionaisComGroq };
+function posicaoOpcaoNoTexto(texto, nome) {
+  const termo = normalizar(nome);
+  const direta = texto.indexOf(termo);
+  if (direta >= 0) return direta;
+  const palavras = texto.split(" ");
+  const partes = termo.split(" ");
+  for (let indice = 0; indice <= palavras.length - partes.length; indice++) {
+    const trecho = palavras.slice(indice, indice + partes.length).join(" ");
+    const limite = Math.max(1, Math.floor(termo.length * 0.2));
+    if (distanciaLevenshtein(trecho, termo) <= limite) {
+      return palavras.slice(0, indice).join(" ").length + (indice ? 1 : 0);
+    }
+  }
+  return -1;
+}
+
+function interpretarAdicionaisLocalmente(mensagem, adicionais) {
+  const texto = normalizar(mensagem);
+  const produtos = [...new Map(adicionais.map(adicional => [normalizar(adicional.produto), adicional.produto])).values()]
+    .map(nome => ({ nome, posicao: posicaoOpcaoNoTexto(texto, nome) }))
+    .filter(produto => produto.posicao >= 0);
+  const extras = [...new Map(adicionais.map(adicional => [normalizar(adicional.nome), adicional.nome])).values()]
+    .map(nome => ({ nome, posicao: posicaoOpcaoNoTexto(texto, nome) }))
+    .filter(adicional => adicional.posicao >= 0);
+  const resultado = [];
+
+  for (const extra of extras) {
+    const candidatos = adicionais.filter(adicional => normalizar(adicional.nome) === normalizar(extra.nome));
+    const produtosCompativeis = produtos.filter(produto =>
+      candidatos.some(adicional => normalizar(adicional.produto) === normalizar(produto.nome))
+    );
+    if (!produtosCompativeis.length) {
+      // Se existir somente um produto que ofereça este adicional, não é
+      // necessário repetir o produto no texto do cliente.
+      if (candidatos.length === 1) resultado.push(candidatos[0]);
+      continue;
+    }
+    const produtoEscolhido = produtosCompativeis
+      .map(produto => ({
+        produto,
+        // Em "bacon no X" o produto costuma aparecer depois do adicional.
+        // Quando aparece antes, a menor distância ainda encontra a ligação.
+        distancia: produto.posicao >= extra.posicao
+          ? produto.posicao - extra.posicao
+          : 10000 + extra.posicao - produto.posicao
+      }))
+      .sort((a, b) => a.distancia - b.distancia)[0]?.produto;
+    const adicional = candidatos.find(item => normalizar(item.produto) === normalizar(produtoEscolhido?.nome));
+    if (adicional && !resultado.some(item =>
+      normalizar(item.produto) === normalizar(adicional.produto) && normalizar(item.nome) === normalizar(adicional.nome)
+    )) resultado.push(adicional);
+  }
+  return resultado;
+}
+
+module.exports = { interpretarComGroq, interpretarLocalmente, interpretarAdicionaisComGroq, interpretarAdicionaisLocalmente };
 

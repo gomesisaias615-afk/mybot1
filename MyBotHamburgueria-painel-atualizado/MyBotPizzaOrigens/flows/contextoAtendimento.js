@@ -16,6 +16,7 @@ const contexto = {
   carrinhoBebida: mapa(salvo.carrinhoBebida),
   observacoesPizza: mapa(salvo.observacoesPizza),
   adicionais: mapa(salvo.adicionais),
+  adicionaisPendentes: mapa(salvo.adicionaisPendentes),
   adicionaisDisponiveis: mapa(salvo.adicionaisDisponiveis),
   enderecos: mapa(salvo.enderecos),
   pagamentos: mapa(salvo.pagamentos)
