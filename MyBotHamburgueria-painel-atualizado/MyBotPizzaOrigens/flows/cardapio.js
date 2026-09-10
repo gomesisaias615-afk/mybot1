@@ -29,7 +29,11 @@ function obterPizzas() {
   );
   return Object.keys(obterPrecosPizzas())
     .filter(nome => !temMapeamento || permitidas.has(nome))
-    .map(nome => ({ nome }));
+    .map(nome => ({
+      nome,
+      categoria: Object.entries(configuracao.pizzasPorCategoria || {})
+        .find(([, produtos]) => (produtos || []).includes(nome))?.[0] || "tradicionais"
+    }));
 }
 
 function obterNomesBebidas() {
@@ -45,18 +49,16 @@ function obterPrecosBebidas() {
 function montarCardapioPizzas(estoquePizzas) {
   const pizzas = obterPizzas();
   const precosPizzas = obterPrecosPizzas();
-  let texto = "🍕 *CARDÁPIO DE PIZZAS*\n\n";
+  let texto = "🍔 *CARDÁPIO DA HAMBURGUERIA*\n\n";
 
   for (const pizza of pizzas) {
     const indisponivel = (estoquePizzas[normalizar(pizza.nome)] || 0) <= 0;
     const nome = indisponivel ? `${pizza.nome} - Indisponível` : pizza.nome;
     const precos = precosPizzas[pizza.nome];
 
-    texto += `${indisponivel ? "❌" : "🍕"} *${nome}*\n` +
-      `🔸 P: R$ ${Number(precos.P).toFixed(2).replace(".", ",")}\n` +
-      `🔸 M: R$ ${Number(precos.M).toFixed(2).replace(".", ",")}\n` +
-      `🔸 G: R$ ${Number(precos.G).toFixed(2).replace(".", ",")}\n` +
-      `🔸 F: R$ ${Number(precos.F).toFixed(2).replace(".", ",")}\n\n`;
+    const rotulo = { tradicionais: "Hambúrguer", especiais: "Acompanhamento", doces: "Combo" }[pizza.categoria] || "Produto";
+    texto += `${indisponivel ? "❌" : "🍔"} *${nome}*\n` +
+      `🔸 ${rotulo}: R$ ${Number(precos.U).toFixed(2).replace(".", ",")}\n\n`;
   }
 
   return texto;

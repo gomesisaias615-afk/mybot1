@@ -29,16 +29,16 @@ module.exports = {
   // ================================
 
   menuInicial:
-`🍕 *${nomePizzaria.toUpperCase()}* 🍕
+`🍔 *${nomePizzaria.toUpperCase()}* 🍔
 
 Olá! 👋
 
 Seja bem-vindo(a) à *${nomePizzaria}*!
 
-🤖 *Eu sou o assistente virtual da pizzaria*
+🤖 *Eu sou o assistente virtual da hamburgueria*
 e vou te atender por aqui.
 
-🍕 *Vou te ajudar a fazer seu pedido*
+🍔 *Vou te ajudar a fazer seu pedido*
 de forma rápida e simples.
 
 ❤️ *Vamos começar?*
@@ -53,7 +53,7 @@ Digite o número ou toque em uma opção.`,
 `📍 Nossa localização...`,
 
   instagram:
-`📸 *Instagram da pizzaria*
+`📸 *Instagram da hamburgueria*
 
 Acompanhe nossas novidades e promoções:
 ${instagramPizzaria}`,
@@ -78,16 +78,16 @@ Link direto: mailto:${emailMyBot}`,
 `👨‍💼 Aguarde um atendente.`,
 
   cardapioTitulo:
-`🍕 CARDÁPIO DE PIZZAS
+`🍔 CARDÁPIO DA HAMBURGUERIA
 ━━━━━━━━━━━━━━━━━━━`,
 
   comoPedirPizza:
 
-`🍕 *COMO FAZER SEU PEDIDO*
+`🍔 *COMO FAZER SEU PEDIDO*
 
 📖 Acesse o *CARDÁPIO DIGITAL DA ${nomePizzaria.toUpperCase()}* pelo link abaixo.
 
-Escolha as pizzas desejadas e, depois:
+Escolha hambúrgueres, acompanhamentos, combos e bebidas e, depois:
 
 ━━━━━━━━━━━━━━━━━━━━
 📩 *ENVIE SEU PEDIDO AQUI NO CHAT*
@@ -97,27 +97,17 @@ Escolha as pizzas desejadas e, depois:
 
 ✍️ *Digite seu pedido neste formato:*
 
-📦 Quantidade → 🍕 Sabor → 📏 Tamanho
+📦 Quantidade → 🍔 Produto
 
 💬 *Exemplos:*
 
-\`2 Pizzas de Calabresa G\`
+\`2 Hambúrgueres X-Salada\`
 
-\`1 Pizza de Calabresa G e 1 Pizza Portuguesa M\`
+\`1 Combo X-Bacon e 2 Batatas fritas\`
 
-\`Uma Pizza de Calabresa grande e uma Pizza Portuguesa média.\`
+\`Quero 1 hambúrguer X-Bacon, 1 combo da casa, 1 nuggets e 2 refrigerantes.\`
 
-
-\`Quero uma pizza grande, metade Calabresa e metade Quatro Queijos.\`
-
-📏 *Tamanhos disponíveis*
-
-🟢 *P* • Pequena • 4 pedaços
-🟡 *M* • Média • 6 pedaços
-🟠 *G* • Grande • 8 pedaços
-🔴 *F* • Família • 12 pedaços
-
-✅ Você pode pedir uma ou várias pizzas na mesma mensagem.
+✅ Você pode pedir um ou vários produtos na mesma mensagem.
 
 🚀 *Acesse o CARDÁPIO DIGITAL pelo link enviado na próxima mensagem e faça seu pedido!*`,
 
@@ -130,7 +120,7 @@ ${linkCardapioDigital}`,
   perguntarBebida:
 `🥤 Deseja adicionar uma bebida?
 
-Uma bebida gelada combina perfeitamente com sua pizza 😋🍕
+Uma bebida gelada combina perfeitamente com seu pedido 😋🍔
 
 1️⃣ Sim
 2️⃣ Não`,
@@ -140,7 +130,7 @@ Uma bebida gelada combina perfeitamente com sua pizza 😋🍕
       📍 ENDEREÇO DE ENTREGA
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
-🍕 Antes de finalizar seu pedido,
+🍔 Antes de finalizar seu pedido,
 precisamos do endereço para realizar a entrega.
 
 📝 Vamos solicitar:
@@ -188,17 +178,17 @@ precisamos do endereço para realizar a entrega.
 `❌ Não foi possível processar seu pedido:`,
 
   exemploPizza:
-`📌 Informe quantidade, sabor e tamanho.
+`📌 Informe a quantidade e o produto.
 
 Exemplos:
-"Quero duas Pizzas de Calabresa família e uma Pizza de Mussarela média."
-"Quero uma grande, metade Calabresa e metade Quatro Queijos."
+"Quero 2 hambúrgueres X-Salada e 1 combo da casa."
+"Quero 1 batata frita, 1 nuggets e 2 refrigerantes."
 
 Formato curto:
-2 Pizzas de Calabresa F e 1 Pizza de Mussarela M`,
+2 X-Salada e 1 Combo da casa`,
 
   dicaPizza:
-`💡 Você pode escrever naturalmente; apenas informe quantidade, sabor e tamanho.`,
+`💡 Você pode escrever naturalmente; apenas informe quantidade e produto.`,
 
   confirmacaoPizzas:
 `🛒 Carrinho:
@@ -213,13 +203,7 @@ Deseja confirmar?
 2️⃣ Não`,
 
   erroTamanhoPizza:
-`❌ Informe o tamanho da pizza.
-
-📌 Use:
-P = Pequena
-M = Média
-G = Grande
-F = Família`,
+`❌ Informe a quantidade e o nome do produto.`,
 
   pizzaNaoEncontrada:
 `❌ Pizza não encontrada no cardápio.`,

@@ -61,9 +61,9 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
     const precosPizzas = obterPrecosPizzas();
     const nomesBebidas = obterNomesBebidas();
     const precosBebidas = obterPrecosBebidas();
-    await msg.reply("⏳ Processando seu pedido de pizza, aguarde um instante...");
+    await msg.reply("⏳ Processando seu pedido, aguarde um instante...");
 
-    const opcoes = pizzas.map(pizza => ({ nome: pizza.nome }));
+    const opcoes = pizzas.map(produto => ({ nome: produto.nome, categoria: produto.categoria }));
     const opcoesBebidas = Object.entries(nomesBebidas).map(([chave, bebida]) => ({
       chave,
       nome: bebida.nome,
@@ -76,7 +76,7 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
       interpretacaoBebidas = interpretarLocalmente(msg.body, opcoesBebidas, "bebida");
       interpretacao = await interpretarComGroq(msg.body, opcoes, "pizza");
     } catch (erro) {
-      console.error(`Erro ao consultar Groq para pizzas: ${erro.message}`);
+      console.error(`Erro ao consultar a IA do cardápio: ${erro.message}`);
       await msg.reply(formatarRespostaIa(
         "❌ Não consegui processar seu pedido agora. " +
         "Aguarde um momento e tente novamente."
@@ -84,8 +84,7 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
       return true;
     }
 
-    // Se uma pizza foi mencionada, não montamos um carrinho parcial:
-    // primeiro pedimos o tamanho que estiver faltando.
+    // Se algum produto foi mencionado, não montamos um carrinho parcial.
     const pizzaMencionada = interpretarLocalmente(msg.body, opcoes, "pizza").itens.length > 0;
     const erroPizzaObrigatorio = pizzaMencionada && interpretacao.erros.length > 0;
     if (
@@ -113,18 +112,18 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
         const chave = normalizar(sabor);
         if (Object.prototype.hasOwnProperty.call(estoque.pizzas || {}, chave) && Number(estoque.pizzas[chave]) <= 0) {
           await msg.reply(formatarRespostaIa(
-            `❌ *A pizza ${sabor} está indisponível no momento.*\n\nEscolha outro sabor disponível no Cardápio Digital.`
+            `❌ *O produto ${sabor} está indisponível no momento.*\n\nEscolha outro produto disponível no Cardápio Digital.`
           ));
           return true;
         }
 
-        // Tamanho é obrigatório, mas só pode ser vendido quando tem preço
-        // cadastrado. Isso impede que P/F sem configuração apareça como R$ 0,00.
+        // Todo produto usa o preço unitário U interno e só pode ser vendido
+        // quando esse preço estiver cadastrado.
         const valor = Number(precosPizzas[sabor]?.[item.tamanho]);
         if (!Number.isFinite(valor) || valor <= 0) {
           await msg.reply(formatarRespostaIa(
-            `❌ *A pizza ${sabor} no tamanho ${item.tamanho} ainda não está disponível no cardápio.*\n\n` +
-            "Escolha um tamanho com preço exibido no Cardápio Digital."
+            `❌ *O produto ${sabor} ainda não está disponível no cardápio.*\n\n` +
+            "Escolha outro produto com preço exibido no Cardápio Digital."
           ));
           return true;
         }
@@ -170,7 +169,7 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
     for (const pizza of contexto.carrinhoPizza[user]) {
       const subtotal = pizza.quantidade * pizza.valor;
       resumo +=
-        `🍕 ${pizza.quantidade}x ${pizza.sabor} ${pizza.tamanho}` +
+        `🍔 ${pizza.quantidade}x ${pizza.sabor}` +
         `${pizza.promocao ? `\n   R$ ${riscar(Number(pizza.promocao.de * pizza.quantidade).toFixed(2).replace(".", ","))} por ${moeda(pizza.promocao.por * pizza.quantidade)}` : ` - ${moeda(subtotal)}`}\n\n`;
     }
 
@@ -204,9 +203,9 @@ async function tratarPizza({ msg, user, contexto, estoque }) {
   }
 
   await msg.reply(
-    `🛒 *Ainda preciso da confirmação do seu carrinho de pizzas.*
+    `🛒 *Ainda preciso da confirmação do seu carrinho.*
 
-1️⃣ Sim — confirmar as pizzas
+1️⃣ Sim — confirmar o pedido
 2️⃣ Não — refazer o pedido`
   );
   return true;

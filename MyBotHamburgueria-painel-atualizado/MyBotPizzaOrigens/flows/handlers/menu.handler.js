@@ -51,7 +51,7 @@ async function executarOpcaoMenu({
 
   if (opcao === "instagram") {
     if (!temInstagram) {
-      await msg.reply("📸 O Instagram da pizzaria ainda não foi configurado.");
+      await msg.reply("📸 O Instagram da hamburgueria ainda não foi configurado.");
       return true;
     }
     await msg.reply(textos.instagram, undefined, { linkPreview: true });
