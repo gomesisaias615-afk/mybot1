@@ -413,3 +413,31 @@ body.modal-local-aberto{overflow:hidden}
 
 /* Taxas apresentadas como categorias separadas, tal como pizzas e bebidas. */
 .taxas-separadas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}.bloco-taxa{display:grid;gap:14px;padding:16px;border:1px solid #cfe9dc;border-radius:18px;background:#fff;transition:.18s opacity,.18s filter}.bloco-taxa.campo-inativo{opacity:.46;filter:grayscale(.3);background:#f5f8f6}.bloco-taxa-titulo{display:flex;align-items:flex-start;gap:10px}.bloco-taxa-titulo>span{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:#e2f8ec;color:#117546;font-weight:900}.bloco-taxa-titulo strong,.bloco-taxa-titulo small{display:block}.bloco-taxa-titulo small{margin-top:3px;color:#66756e;line-height:1.35}.bloco-taxa>label{display:grid;gap:7px;font-weight:700;color:#20322a}.bloco-taxa input{width:100%;box-sizing:border-box}@media(max-width:680px){.taxas-separadas{grid-template-columns:1fr}}
+
+/* Painel de operação no celular: nenhum cartão pode ampliar a página. */
+@media (max-width: 680px) {
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  #aplicacao,main,.secao-painel,.card,.titulo-card,.lista-precos,.grade-estoque,.grade-imagens{min-width:0;max-width:100%}
+  main{width:calc(100% - 24px);margin-inline:auto}
+  .topbar{padding-inline:12px;gap:10px}
+  .marca{min-width:0;gap:8px}
+  .marca>span{min-width:0;overflow:hidden}
+  .marca>span b,.marca>span small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-acoes{gap:6px;flex:0 0 auto}
+  .guias-principais,.abas,.filtros-historico,.subguias-pedidos{
+    width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none
+  }
+  .guias-principais::-webkit-scrollbar,.abas::-webkit-scrollbar,.filtros-historico::-webkit-scrollbar,.subguias-pedidos::-webkit-scrollbar{display:none}
+  .guias-principais{margin-inline:0;padding:3px 0}
+  .abas{padding:3px 0;margin-right:0}
+  .guias-principais>*,.abas>*,.filtros-historico>*,.subguias-pedidos>*{flex:0 0 auto;white-space:nowrap}
+  .guia-principal{flex:0 0 auto}
+  .titulo-card,.linha-preco,.linha-promocao,.produto{min-width:0}
+  .titulo-card input,.titulo-card select,.linha-preco input,.linha-promocao input,.linha-preco textarea{max-width:100%}
+  .linha-preco,.linha-promocao{align-items:stretch}
+  .linha-preco strong,.linha-promocao strong{min-width:0;overflow-wrap:anywhere}
+  .linha-preco label{min-width:0;max-width:100%}
+  .produto{align-items:flex-start}
+  .produto-nome{overflow-wrap:anywhere}
+}

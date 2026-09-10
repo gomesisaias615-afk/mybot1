@@ -412,7 +412,11 @@ async function interpretarAdicionaisComGroq(mensagem, adicionais) {
     // adicional. Ex.: "Batata" em "Combo de Frango com Batata Frita".
     const associacoesLocaisDoMesmoAdicional = leituraLocal.filter(local => normalizar(local.nome) === normalizar(adicional?.nome));
     const associadoAoProdutoCerto = !associacoesLocaisDoMesmoAdicional.length || associacoesLocaisDoMesmoAdicional.some(local => normalizar(local.produto) === normalizar(adicional?.produto));
-    if (associadoAoProdutoCerto && adicionalFoiMencionadoSeparadamente(mensagem, adicional, adicionais)) adicionarSeValido(adicional);
+    if (
+      associadoAoProdutoCerto &&
+      produtoDoAdicionalFoiCitado(mensagem, adicional, adicionais) &&
+      adicionalFoiMencionadoSeparadamente(mensagem, adicional, adicionais)
+    ) adicionarSeValido(adicional);
   }
 
   // A IA é auxiliada por uma leitura local. Isso cobre frases naturais como
@@ -470,6 +474,16 @@ function adicionalFoiMencionadoSeparadamente(mensagem, adicional, catalogoAdicio
   );
 }
 
+function produtoDoAdicionalFoiCitado(mensagem, adicional, catalogoAdicionais = []) {
+  if (!adicional) return false;
+  const texto = normalizar(mensagem);
+  const produtosCitados = [...new Set(catalogoAdicionais.map(item => item.produto))]
+    .filter(nome => posicaoOpcaoNoTexto(texto, nome) >= 0);
+  // Se o cliente citou produto(s), o adicional só pode ser usado em um deles.
+  // Isso impede que a IA leve "salmo no combo" para um Calabresa não citado.
+  return !produtosCitados.length || produtosCitados.some(nome => normalizar(nome) === normalizar(adicional.produto));
+}
+
 function interpretarAdicionaisLocalmente(mensagem, adicionais) {
   const texto = normalizar(mensagem);
   const produtos = [...new Map(adicionais.map(adicional => [normalizar(adicional.produto), adicional.produto])).values()]
@@ -488,8 +502,9 @@ function interpretarAdicionaisLocalmente(mensagem, adicionais) {
     );
     if (!produtosCompativeis.length) {
       // Se existir somente um produto que ofereça este adicional, não é
-      // necessário repetir o produto no texto do cliente.
-      if (candidatos.length === 1) resultado.push(candidatos[0]);
+      // necessário repetir o produto no texto do cliente. Porém, se o
+      // cliente citou outro produto, nunca transferimos o adicional para ele.
+      if (!produtos.length && candidatos.length === 1) resultado.push(candidatos[0]);
       continue;
     }
     const produtoEscolhido = produtosCompativeis

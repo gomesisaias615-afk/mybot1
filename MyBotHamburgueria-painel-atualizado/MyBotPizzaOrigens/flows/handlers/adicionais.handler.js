@@ -1,6 +1,6 @@
-const { respostaSim, respostaNao } = require("../../utils/texto");
+const { normalizar, respostaSim, respostaNao } = require("../../utils/texto");
 const { adicionaisDisponiveis, formatarAdicionais, localizarAdicional } = require("../adicionais");
-const { interpretarAdicionaisComGroq } = require("../../services/groqCardapio.service");
+const { interpretarAdicionaisComGroq, interpretarAdicionaisLocalmente } = require("../../services/groqCardapio.service");
 
 async function perguntarObservacao(msg, user, contexto) {
   contexto.estados[user] = "perguntar_observacao_pizza";
@@ -10,6 +10,22 @@ Exemplos: “Sem cebola” ou “Carne mal passada”.
 
 1️⃣ Sim
 2️⃣ Não`);
+}
+
+function errosDeVinculoAdicional(texto, disponiveis) {
+  const entrada = normalizar(texto);
+  const produtosCitados = [...new Set(disponiveis.map(item => item.produto))]
+    .filter(produto => entrada.includes(normalizar(produto)));
+  if (!produtosCitados.length) return [];
+
+  const nomesAdicionais = [...new Set(disponiveis.map(item => item.nome))]
+    .filter(nome => entrada.includes(normalizar(nome)));
+  return nomesAdicionais.flatMap(nome => {
+    const opcoes = disponiveis.filter(item => normalizar(item.nome) === normalizar(nome));
+    if (opcoes.some(item => produtosCitados.some(produto => normalizar(produto) === normalizar(item.produto)))) return [];
+    const produtosPermitidos = [...new Set(opcoes.map(item => item.produto))];
+    return [`O adicional *${nome}* não está disponível para *${produtosCitados.join(" ou ")}*. Disponível para: *${produtosPermitidos.join(" ou ")}*.`];
+  });
 }
 
 async function oferecerAdicionais(msg, user, contexto) {
@@ -82,13 +98,24 @@ ${formatarAdicionais(contexto.adicionaisDisponiveis[user] || [])}`);
   }
 
   const disponiveis = contexto.adicionaisDisponiveis[user] || [];
-  let selecionados = [];
-  try {
-    selecionados = await interpretarAdicionaisComGroq(msg.body, disponiveis);
-  } catch (erro) {
-    console.warn(`Groq indisponível para adicionais: ${erro.message}`);
-    const adicionalLocal = localizarAdicional(msg.body, disponiveis);
-    if (adicionalLocal) selecionados = [adicionalLocal];
+  // O robô local é a fonte principal: ele só aceita o adicional quando ele
+  // pertence exatamente ao produto citado. A IA fica restrita a casos em que
+  // o robô não conseguiu ler a frase, normalmente por erro de digitação.
+  const errosDeVinculo = errosDeVinculoAdicional(msg.body, disponiveis);
+  let selecionados = interpretarAdicionaisLocalmente(msg.body, disponiveis);
+  if (!selecionados.length && !errosDeVinculo.length) {
+    try {
+      selecionados = await interpretarAdicionaisComGroq(msg.body, disponiveis);
+    } catch (erro) {
+      console.warn(`IA de apoio indisponível para adicionais: ${erro.message}`);
+      const adicionalLocal = localizarAdicional(msg.body, disponiveis);
+      if (adicionalLocal) selecionados = [adicionalLocal];
+    }
+  }
+
+  if (errosDeVinculo.length) {
+    await msg.reply(`⚠️ *Não consegui incluir esses adicionais*\n\n${errosDeVinculo.join("\n")}\n\nEscolha somente os adicionais listados para cada produto.`);
+    return true;
   }
 
   if (!selecionados.length) {
