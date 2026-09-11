@@ -802,6 +802,37 @@ function podeAtualizarDadosAutomaticamente() {
 // outras abas; aqui buscamos somente os dados operacionais e redesenhamos os
 // cartões quando a aba Pedidos estiver visível.
 let atualizacaoPedidosEmAndamento = false;
+let pedidosJaVistos = null;
+
+function atualizarBotaoNotificacoes() {
+  const botao = $("#ativarNotificacoes");
+  if (!botao || portalPainel !== "atendente" || !("Notification" in window)) return;
+  botao.hidden = false;
+  const ativo = Notification.permission === "granted";
+  botao.classList.toggle("ativo", ativo);
+  botao.textContent = ativo ? "🔔 NOTIFICAÇÕES ATIVADAS" : "🔔 RECEBER NOTIFICAÇÕES";
+}
+
+async function ativarNotificacoes() {
+  if (!("Notification" in window)) return toast("Este navegador não oferece notificações.");
+  const permissao = await Notification.requestPermission();
+  atualizarBotaoNotificacoes();
+  toast(permissao === "granted" ? "Você receberá avisos de novos pedidos." : "Permissão de notificações não concedida.");
+}
+
+function avisarPedidosNovos(pedidos) {
+  if (portalPainel !== "atendente") return;
+  const ids = new Set((pedidos || []).map(pedido => String(pedido.id)));
+  if (pedidosJaVistos === null) { pedidosJaVistos = ids; return; }
+  const novos = (pedidos || []).filter(pedido => !pedidosJaVistos.has(String(pedido.id)));
+  pedidosJaVistos = ids;
+  if (!novos.length || Notification.permission !== "granted") return;
+  novos.forEach(pedido => new Notification("Novo pedido MyBot", {
+    body: `Pedido #${pedido.id} recebido. Abra o painel para atender.`,
+    icon: "/painel/mybot-logo-verde.png",
+    tag: `pedido-${pedido.id}`
+  }));
+}
 async function atualizarPedidosAutomaticamente() {
   if (
     atualizacaoPedidosEmAndamento ||
@@ -812,6 +843,7 @@ async function atualizarPedidosAutomaticamente() {
   atualizacaoPedidosEmAndamento = true;
   try {
     estado.dados = await api(`/api/painel/dados?_=${Date.now()}`, { cache: "no-store" });
+    avisarPedidosNovos(estado.dados.pedidos);
     renderPedidos();
   } catch {
     // A verificação de sessão existente continua responsável por mostrar o
@@ -849,6 +881,10 @@ async function validarSessaoPainel({ atualizarDados = true } = {}) {
 }
 
 validarSessaoPainel();
+if (portalPainel === "atendente") {
+  atualizarBotaoNotificacoes();
+  $("#ativarNotificacoes")?.addEventListener("click", ativarNotificacoes);
+}
 
 window.addEventListener("pagehide", () => {
   // Impede que o histórico rápido do celular fotografe pedidos e controles.

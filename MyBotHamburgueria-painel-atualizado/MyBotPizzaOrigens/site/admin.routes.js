@@ -165,7 +165,6 @@ function perfilAutenticado(req, perfilPreferido = "") {
     const esperada = crypto.createHmac("sha256", dados.token()).update(`${emitidoEm}.${aleatorio}`).digest("base64url");
     if (compararSeguro(assinatura, esperada)) return perfil;
   }
-  if (appAutenticado(req)) return perfilPreferido === "atendente" ? "atendente" : "administrador";
   return null;
 }
 
