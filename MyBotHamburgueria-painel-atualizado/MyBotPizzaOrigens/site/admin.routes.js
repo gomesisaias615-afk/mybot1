@@ -18,9 +18,12 @@ const {
 const router = express.Router();
 const publicDir = path.join(__dirname, "admin-public");
 const appPublicDir = path.join(__dirname, "app-public");
-// TESTE: sessões expiram em 1 minuto. Em produção, altere ambos para 60 * 60 * 1000 (1 hora).
-const DURACAO_SESSAO = 60 * 1000;
-const DURACAO_SESSAO_APP = 60 * 1000;
+const installPublicDir = path.join(__dirname, "install-public");
+// Os painéis exigem nova senha após uma hora. O acesso geral do MyBot fica
+// persistente por dispositivo; o Chrome limita cookies persistentes a 400 dias.
+// Alterar MYBOT_APP_ACCESS_TOKEN invalida imediatamente todas essas sessões.
+const DURACAO_SESSAO = 60 * 60 * 1000;
+const DURACAO_SESSAO_APP = 400 * 24 * 60 * 60 * 1000;
 const COOKIE_PAINEL_LEGADO = "mybot_painel_seguro";
 const COOKIE_APP = "mybot_app_acesso";
 const PERFIS_PAINEL = {
@@ -183,7 +186,12 @@ function limparSessoes(res) {
 router.get(["/app", "/app/"], (req, res) => {
   res.set("Cache-Control", "no-store").sendFile(path.join(appPublicDir, "index.html"));
 });
+router.get("/instalar", (req, res) => res.set("Cache-Control", "no-store").sendFile(path.join(appPublicDir, "instalar.html")));
 router.use("/app", express.static(appPublicDir, { etag: false, lastModified: false }));
+router.get(["/instalar", "/instalar/"], (req, res) => {
+  res.set("Cache-Control", "no-store").sendFile(path.join(installPublicDir, "index.html"));
+});
+router.use("/instalar", express.static(installPublicDir, { etag: false, lastModified: false }));
 router.get("/api/app/sessao", (req, res) => {
   res.set("Cache-Control", "no-store").json({ autenticado: appAutenticado(req), configurado: Boolean(tokenDoApp()) });
 });
