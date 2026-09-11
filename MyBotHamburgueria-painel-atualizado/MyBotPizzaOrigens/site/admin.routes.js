@@ -17,8 +17,11 @@ const {
 
 const router = express.Router();
 const publicDir = path.join(__dirname, "admin-public");
+const appPublicDir = path.join(__dirname, "app-public");
 const DURACAO_SESSAO = 24 * 60 * 60 * 1000;
+const DURACAO_SESSAO_APP = 30 * 24 * 60 * 60 * 1000;
 const COOKIE_PAINEL_LEGADO = "mybot_painel_seguro";
+const COOKIE_APP = "mybot_app_acesso";
 const PERFIS_PAINEL = {
   administrador: { cookie: "mybot_painel_administrador", token: () => String(process.env.PANEL_ADMIN_TOKEN || "").trim() },
   atendente: { cookie: "mybot_painel_atendente", token: () => String(process.env.PANEL_ATENDENTE_TOKEN || "").trim() }
@@ -70,6 +73,10 @@ function tokenAdministrador() {
   return PERFIS_PAINEL.administrador.token();
 }
 
+function tokenDoApp() {
+  return String(process.env.MYBOT_APP_ACCESS_TOKEN || "").trim();
+}
+
 function tokenDoPerfil(perfil) {
   return PERFIS_PAINEL[perfil]?.token() || "";
 }
@@ -114,6 +121,36 @@ function criarSessao(res, perfil = "administrador") {
   });
 }
 
+function sessaoAssinadaValida(id, segredo, duracao) {
+  if (!id || !segredo) return false;
+  const partes = String(id).split(".");
+  if (partes.length !== 3) return false;
+  const [emitidoEm, aleatorio, assinatura] = partes;
+  const instante = Number(emitidoEm);
+  if (!Number.isFinite(instante) || instante > Date.now() || Date.now() - instante > duracao) return false;
+  const esperada = crypto.createHmac("sha256", segredo).update(`${emitidoEm}.${aleatorio}`).digest("base64url");
+  return compararSeguro(assinatura, esperada);
+}
+
+function criarSessaoApp(res) {
+  const segredo = tokenDoApp();
+  const emitidoEm = String(Date.now());
+  const aleatorio = crypto.randomBytes(24).toString("base64url");
+  const conteudo = `${emitidoEm}.${aleatorio}`;
+  const assinatura = crypto.createHmac("sha256", segredo).update(conteudo).digest("base64url");
+  res.cookie(COOKIE_APP, `${conteudo}.${assinatura}`, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: DURACAO_SESSAO_APP,
+    path: "/"
+  });
+}
+
+function appAutenticado(req) {
+  return sessaoAssinadaValida(cookies(req)[COOKIE_APP], tokenDoApp(), DURACAO_SESSAO_APP);
+}
+
 function perfilAutenticado(req, perfilPreferido = "") {
   const recebidos = cookies(req);
   const perfis = Object.entries(PERFIS_PAINEL).sort(([a], [b]) => (b === perfilPreferido) - (a === perfilPreferido));
@@ -128,6 +165,7 @@ function perfilAutenticado(req, perfilPreferido = "") {
     const esperada = crypto.createHmac("sha256", dados.token()).update(`${emitidoEm}.${aleatorio}`).digest("base64url");
     if (compararSeguro(assinatura, esperada)) return perfil;
   }
+  if (appAutenticado(req)) return perfilPreferido === "atendente" ? "atendente" : "administrador";
   return null;
 }
 
@@ -139,7 +177,26 @@ function limparSessoes(res) {
   res.clearCookie(COOKIE_PAINEL_LEGADO, { path: "/" });
   res.clearCookie(COOKIE_PAINEL_LEGADO, { path: "/api/painel" });
   for (const dados of Object.values(PERFIS_PAINEL)) res.clearCookie(dados.cookie, { path: "/" });
+  res.clearCookie(COOKIE_APP, { path: "/" });
 }
+
+router.get(["/app", "/app/"], (req, res) => {
+  res.set("Cache-Control", "no-store").sendFile(path.join(appPublicDir, "index.html"));
+});
+router.use("/app", express.static(appPublicDir, { etag: false, lastModified: false }));
+router.get("/api/app/sessao", (req, res) => {
+  res.set("Cache-Control", "no-store").json({ autenticado: appAutenticado(req), configurado: Boolean(tokenDoApp()) });
+});
+router.post("/api/app/entrar", (req, res) => {
+  const esperado = tokenDoApp();
+  if (!esperado || !compararSeguro(req.body?.token || "", esperado)) return res.status(401).json({ erro: "Código de acesso incorreto." });
+  criarSessaoApp(res);
+  res.json({ autenticado: true });
+});
+router.post("/api/app/sair", (req, res) => {
+  res.clearCookie(COOKIE_APP, { path: "/" });
+  res.sendStatus(204);
+});
 
 function autenticarPerfil(req, res, next) {
   const perfil = perfilAutenticado(req, String(req.get("x-mybot-portal") || ""));
