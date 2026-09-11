@@ -18,8 +18,9 @@ const {
 const router = express.Router();
 const publicDir = path.join(__dirname, "admin-public");
 const appPublicDir = path.join(__dirname, "app-public");
-const DURACAO_SESSAO = 24 * 60 * 60 * 1000;
-const DURACAO_SESSAO_APP = 30 * 24 * 60 * 60 * 1000;
+// TESTE: sessões expiram em 1 minuto. Em produção, altere ambos para 60 * 60 * 1000 (1 hora).
+const DURACAO_SESSAO = 60 * 1000;
+const DURACAO_SESSAO_APP = 60 * 1000;
 const COOKIE_PAINEL_LEGADO = "mybot_painel_seguro";
 const COOKIE_APP = "mybot_app_acesso";
 const PERFIS_PAINEL = {
