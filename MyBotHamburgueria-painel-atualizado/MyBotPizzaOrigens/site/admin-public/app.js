@@ -1689,6 +1689,12 @@ document.addEventListener("click", async e => {
   }
   if (!salvar) return;
   try {
+    for (const produto of estado.adicionais || []) for (const adicional of produto.adicionais || []) {
+      const nome = String(adicional.nome || "").trim();
+      const preco = Number(String(adicional.preco ?? "").replace(",", "."));
+      if (!nome) throw new Error(`Informe o nome do adicional em "${produto.nome}".`);
+      if (!Number.isFinite(preco) || preco <= 0) throw new Error(`Informe um preço válido para o adicional "${nome}".`);
+    }
     salvar.disabled = true;
     salvar.textContent = "Salvando...";
     const adicionais = Object.fromEntries((estado.adicionais || []).map(item => [item.nome, (item.adicionais || []).map(adicional => ({

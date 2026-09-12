@@ -554,8 +554,9 @@ router.put("/api/painel/adicionais", exigirAutenticacao, (req,res)=>{try{
     for(const item of linhas){
       const nome=String(item?.nome||"").trim();
       const preco=Number(String(item?.preco??"").replace(",","."));
-      if(!nome)continue;
-      if(nome.length>80||!Number.isFinite(preco)||preco<=0||preco>5000)throw Error(`Informe um valor válido para o adicional "${nome}".`);
+      if(!nome)throw Error("Informe o nome do adicional antes de salvar.");
+      if(nome.length>80)throw Error("O nome do adicional pode ter no máximo 80 caracteres.");
+      if(!Number.isFinite(preco)||preco<=0||preco>5000)throw Error(`Informe um preço válido para o adicional "${nome}".`);
       limpos.push({nome,preco});
     }
     if(limpos.length>20)throw Error("Cada produto pode ter no máximo 20 adicionais.");
