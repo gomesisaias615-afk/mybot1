@@ -190,11 +190,14 @@ router.get("/app/service-worker.js", (req, res) => {
   res.set("Service-Worker-Allowed", "/");
   res.sendFile(path.join(appPublicDir, "service-worker.js"));
 });
+router.get("/service-worker.js", (req, res) => {
+  res.sendFile(path.join(appPublicDir, "service-worker.js"));
+});
 router.get(["/instalar", "/instalar/"], (req, res) => {
   const arquivo = path.join(installPublicDir, "index.html");
   const scriptInstalacao = `<script>
     const botaoMyBot=document.querySelector('#instalar'), ajudaMyBot=document.querySelector('.ajuda'); let promptMyBot;
-    if('serviceWorker' in navigator) navigator.serviceWorker.register('/app/service-worker.js',{scope:'/'}).then(()=>{if(!navigator.serviceWorker.controller&&!sessionStorage.getItem('mybot-instalador-pronto')){sessionStorage.setItem('mybot-instalador-pronto','1');location.reload();}}).catch(()=>{});
+    if('serviceWorker' in navigator) navigator.serviceWorker.register('/service-worker.js').then(()=>{if(!navigator.serviceWorker.controller&&!sessionStorage.getItem('mybot-instalador-pronto')){sessionStorage.setItem('mybot-instalador-pronto','1');location.reload();}}).catch(()=>{});
     if(matchMedia('(display-mode: standalone)').matches||navigator.standalone){botaoMyBot.disabled=true;botaoMyBot.textContent='ABRINDO CENTRAL MYBOT...';if(ajudaMyBot)ajudaMyBot.textContent='Abrindo Administrador e Atendente...';setTimeout(()=>location.replace('/app/'),500);}
     else if(ajudaMyBot)ajudaMyBot.textContent='Aguarde alguns segundos para o Chrome liberar a instalação.';
     addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptMyBot=e;if(ajudaMyBot)ajudaMyBot.textContent='Pronto: toque em INSTALAR MYBOT para confirmar.';});
