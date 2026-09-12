@@ -917,6 +917,12 @@ function aplicarRestricoesDoPortal() {
   });
   const titulo = portalPainel === "atendente" ? "Portal do atendente" : "Portal administrativo";
   document.querySelectorAll(".marca-login small").forEach(el => { el.textContent = titulo; });
+  const tituloPortal = $("#tituloPortal");
+  const descricaoPortal = $("#descricaoPortal");
+  if (tituloPortal) tituloPortal.textContent = portalPainel === "atendente" ? "Olá, atendente 👋" : "Olá, administrador 👋";
+  if (descricaoPortal) descricaoPortal.textContent = portalPainel === "atendente"
+    ? "Receba, acompanhe e atualize os pedidos do delivery em tempo real."
+    : "Configure o cardápio, estoque, preços e as funções do seu delivery em um só lugar.";
   const textoLogin = $("#login .muted");
   if (textoLogin) textoLogin.textContent = portalPainel === "atendente"
     ? "Entre com o código do atendente."
@@ -1257,7 +1263,7 @@ render = function renderComGuias() {
   aplicarGuia(estado.guia);
   renderHistorico();
 };
-aplicarGuia("pedidos");
+aplicarGuia(portalPainel === "atendente" ? "pedidos" : "estoque");
 
 function tempoNoHistorico(pedido) {
   const inicio = new Date(pedido.atualizadoEm || pedido.criadoEm || Date.now()).getTime();
