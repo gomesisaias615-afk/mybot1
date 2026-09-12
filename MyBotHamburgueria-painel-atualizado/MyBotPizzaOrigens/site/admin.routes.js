@@ -186,6 +186,24 @@ function limparSessoes(res) {
 router.get(["/app", "/app/"], (req, res) => {
   res.set("Cache-Control", "no-store").sendFile(path.join(appPublicDir, "index.html"));
 });
+router.get("/app/service-worker.js", (req, res) => {
+  res.set("Service-Worker-Allowed", "/");
+  res.sendFile(path.join(appPublicDir, "service-worker.js"));
+});
+router.get(["/instalar", "/instalar/"], (req, res) => {
+  const arquivo = path.join(installPublicDir, "index.html");
+  const scriptInstalacao = `<script>
+    const botaoMyBot=document.querySelector('#instalar'), ajudaMyBot=document.querySelector('.ajuda'); let promptMyBot;
+    if('serviceWorker' in navigator) navigator.serviceWorker.register('/app/service-worker.js',{scope:'/'}).catch(()=>{});
+    if(matchMedia('(display-mode: standalone)').matches||navigator.standalone){botaoMyBot.disabled=true;botaoMyBot.textContent='✓ MYBOT JÁ ESTÁ INSTALADO';if(ajudaMyBot)ajudaMyBot.textContent='Você já está usando o MyBot como aplicativo. Abra-o pelo ícone na tela inicial.';}
+    else if(ajudaMyBot)ajudaMyBot.textContent='Aguarde alguns segundos para o Chrome liberar a instalação.';
+    addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptMyBot=e;if(ajudaMyBot)ajudaMyBot.textContent='Pronto: toque em INSTALAR MYBOT para confirmar.';});
+    addEventListener('appinstalled',()=>{promptMyBot=null;botaoMyBot.disabled=true;botaoMyBot.textContent='✓ MYBOT INSTALADO';if(ajudaMyBot)ajudaMyBot.textContent='Pronto! O ícone MyBot foi adicionado à tela inicial.';});
+    botaoMyBot.onclick=async()=>{if(matchMedia('(display-mode: standalone)').matches||navigator.standalone)return;if(!promptMyBot){if(ajudaMyBot)ajudaMyBot.textContent='O Chrome ainda está preparando a instalação. Aguarde alguns segundos ou use o menu ⋮ e escolha Instalar app.';return;}promptMyBot.prompt();const escolha=await promptMyBot.userChoice;if(escolha.outcome==='dismissed'&&ajudaMyBot)ajudaMyBot.textContent='Instalação cancelada. Toque no botão quando quiser tentar novamente.';promptMyBot=null;};
+  </script>`;
+  try { const html = fs.readFileSync(arquivo, "utf8").replace("</body>", `${scriptInstalacao}</body>`); res.set("Cache-Control", "no-store").type("html").send(html); }
+  catch { res.status(500).send("Não foi possível abrir a página de instalação."); }
+});
 router.get("/instalar", (req, res) => res.set("Cache-Control", "no-store").type("html").send(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08783f"><link rel="manifest" href="/app/manifest.webmanifest"><title>Instalar MyBot</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#08783f;font-family:Arial;color:#fff}main{max-width:420px;margin:20px;padding:32px;text-align:center;border-radius:28px;background:#063c25}.logo{width:160px}.lista{text-align:left;line-height:2;background:#0c5939;padding:18px;border-radius:16px}.botao{width:100%;padding:18px;border:0;border-radius:14px;background:#25cf72;color:#042716;font-weight:bold;font-size:16px;cursor:pointer}.ajuda{font-size:13px;line-height:1.5;color:#d5eddf}</style><main><img class="logo" src="/painel/mybot-logo-verde.png" alt="MyBot"><h1>Instale o MyBot</h1><p>Tenha o MyBot na tela inicial do celular ou computador.</p><div class="lista">✓ Ícone MyBot<br>✓ Acesso por token e HTTPS<br>✓ Administrador e Atendente</div><br><button class="botao" id="instalar">⬇ INSTALAR MYBOT</button><p class="ajuda">Se o Chrome não abrir a instalação, use o menu ⋮ e escolha Instalar app.</p></main><script>let p;addEventListener('beforeinstallprompt',e=>{e.preventDefault();p=e});document.querySelector('#instalar').onclick=async()=>{if(!p)return alert('No Chrome, use ⋮ → Instalar app');p.prompt();await p.userChoice;p=null}</script>`));
 router.use("/app", express.static(appPublicDir, { etag: false, lastModified: false }));
 router.get(["/instalar", "/instalar/"], (req, res) => {
