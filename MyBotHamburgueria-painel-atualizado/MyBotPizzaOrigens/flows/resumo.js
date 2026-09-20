@@ -10,6 +10,23 @@ function tipoDoProduto(produto) {
   return { icone: "🍔", rotulo: "Hambúrguer" };
 }
 
+function nomeBebidaNoResumo(bebida, bebidas) {
+  const nomeOriginal = String(bebida?.nome || "Bebida").trim();
+  const volume = nomeOriginal.match(/\b\d+(?:[.,]\d+)?\s*(?:ml|l|litro(?:s)?)\b/i)?.[0] || "";
+  const semVolume = nomeOriginal
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|l|litro(?:s)?)\b/ig, " ")
+    .replace(/\b([a-zÀ-ÿ]+)(?:\s+\1\b)+/gi, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  const mesmaBebida = item => String(item?.nome || "")
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|l|litro(?:s)?)\b/ig, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("pt-BR") === semVolume.toLocaleLowerCase("pt-BR");
+  const precisaVolume = bebidas.filter(mesmaBebida).length > 1;
+  return `${semVolume}${precisaVolume && volume ? ` ${volume}` : ""}`.trim();
+}
+
 function gerarResumo(user, carrinhoPizza, carrinhoBebida, adicionais = {}) {
   let texto = "🧾 RESUMO DO PEDIDO\n\n";
   let total = 0;
@@ -24,7 +41,7 @@ function gerarResumo(user, carrinhoPizza, carrinhoBebida, adicionais = {}) {
       const tipo = tipoDoProduto(produto);
       const nome = produto.sabor || produto.sabores?.join(" / ") || "Produto";
       total += subtotal;
-      texto += `${tipo.icone} *${produto.quantidade}x ${tipo.rotulo}: ${nome}*\n`;
+      texto += `${tipo.icone} *${produto.quantidade}x ${nome}*\n`;
       texto += `   💰 ${moeda(subtotal)}\n\n`;
     }
   }
@@ -43,7 +60,7 @@ function gerarResumo(user, carrinhoPizza, carrinhoBebida, adicionais = {}) {
     for (const bebida of bebidas) {
       const subtotal = Number(bebida.quantidade || 0) * Number(bebida.valor || 0);
       total += subtotal;
-      texto += `🥤 *${bebida.quantidade}x Bebida: ${bebida.nome}*\n`;
+      texto += `🥤 *${bebida.quantidade}x ${nomeBebidaNoResumo(bebida, bebidas)}*\n`;
       texto += `   💰 ${moeda(subtotal)}\n\n`;
     }
   }

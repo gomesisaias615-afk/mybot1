@@ -1,7 +1,8 @@
 const textos = require("./textosFlows");
 const {
   contexto,
-  resetarUsuario
+  resetarUsuario,
+  registrarAtividade
 } = require("./contextoAtendimento");
 const {
   estoque,
@@ -55,6 +56,14 @@ async function tratarComandoGlobal(msg, client, user, texto) {
 async function atendimento(msg, client) {
   const user = msg.from;
   const texto = normalizar(msg.body);
+  const limiteInatividade = 12 * 60 * 60 * 1000;
+  const ultimoContato = Number(contexto.ultimoContato?.[user] || 0);
+  const fluxoExpirado = ultimoContato && Date.now() - ultimoContato >= limiteInatividade;
+  if (fluxoExpirado) {
+    resetarUsuario(user);
+    registrarAtividade(user);
+  }
+  registrarAtividade(user);
   const estadoAtual = contexto.estados[user];
 
   // "menu" sempre vence qualquer outro fluxo, inclusive pedido, endereço e pagamento.

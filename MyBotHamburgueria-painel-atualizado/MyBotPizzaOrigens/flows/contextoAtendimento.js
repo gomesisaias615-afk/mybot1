@@ -18,6 +18,7 @@ const contexto = {
   adicionais: mapa(salvo.adicionais),
   adicionaisPendentes: mapa(salvo.adicionaisPendentes),
   adicionaisDisponiveis: mapa(salvo.adicionaisDisponiveis),
+  ultimoContato: mapa(salvo.ultimoContato),
   enderecos: mapa(salvo.enderecos),
   pagamentos: mapa(salvo.pagamentos)
 };
@@ -39,4 +40,9 @@ function resetarTodosUsuarios() {
   return usuarios.size;
 }
 
-module.exports = { contexto, resetarUsuario, resetarTodosUsuarios, salvarContexto };
+function registrarAtividade(user) {
+  contexto.ultimoContato[user] = Date.now();
+  salvarContexto();
+}
+
+module.exports = { contexto, resetarUsuario, resetarTodosUsuarios, salvarContexto, registrarAtividade };
