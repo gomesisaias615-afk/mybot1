@@ -27,7 +27,7 @@ function nomeBebidaNoResumo(bebida, bebidas) {
   return `${semVolume}${precisaVolume && volume ? ` ${volume}` : ""}`.trim();
 }
 
-function gerarResumo(user, carrinhoPizza, carrinhoBebida, adicionais = {}) {
+function gerarResumo(user, carrinhoPizza, carrinhoBebida, adicionais = {}, observacao = "") {
   let texto = "🧾 RESUMO DO PEDIDO\n\n";
   let total = 0;
   const pizzas = carrinhoPizza[user] || [];
@@ -77,6 +77,11 @@ function gerarResumo(user, carrinhoPizza, carrinhoBebida, adicionais = {}) {
       texto += `   💰 ${moeda(subtotal)}\n\n`;
     }
   }
+  if (String(observacao || "").trim()) {
+    texto += "📝 OBSERVAÇÃO\n";
+    texto += `“${String(observacao).trim()}”\n\n`;
+  }
+
   return `${texto}────────────────────\n💵 *TOTAL: ${moeda(total)}*\n\nDeseja continuar?\n\n1️⃣ Sim\n2️⃣ Não`;
 }
 
