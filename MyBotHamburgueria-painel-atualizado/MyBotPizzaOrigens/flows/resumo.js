@@ -55,16 +55,28 @@ function gerarResumo(user, carrinhoPizza, carrinhoBebida, adicionais = {}) {
     }
   }
 
-  if (bebidas.length) {
-    texto += "🥤 BEBIDAS\n\n";
-    for (const bebida of bebidas) {
-      const subtotal = Number(bebida.quantidade || 0) * Number(bebida.valor || 0);
+  const combos = bebidas.filter(item => item.tipo === "combo");
+  const bebidasNormais = bebidas.filter(item => item.tipo !== "combo");
+
+  if (combos.length) {
+    texto += "🍱 COMBOS\n\n";
+    for (const combo of combos) {
+      const subtotal = Number(combo.quantidade || 0) * Number(combo.valor || 0);
       total += subtotal;
-      texto += `🥤 *${bebida.quantidade}x ${nomeBebidaNoResumo(bebida, bebidas)}*\n`;
+      texto += `🍱 *${combo.quantidade}x ${combo.nome || "Combo"}*\n`;
       texto += `   💰 ${moeda(subtotal)}\n\n`;
     }
   }
 
+  if (bebidasNormais.length) {
+    texto += "🥤 BEBIDAS\n\n";
+    for (const bebida of bebidasNormais) {
+      const subtotal = Number(bebida.quantidade || 0) * Number(bebida.valor || 0);
+      total += subtotal;
+      texto += `🥤 *${bebida.quantidade}x ${nomeBebidaNoResumo(bebida, bebidasNormais)}*\n`;
+      texto += `   💰 ${moeda(subtotal)}\n\n`;
+    }
+  }
   return `${texto}────────────────────\n💵 *TOTAL: ${moeda(total)}*\n\nDeseja continuar?\n\n1️⃣ Sim\n2️⃣ Não`;
 }
 
