@@ -259,6 +259,7 @@ let mapaPizzaria;
 let marcadorPizzaria;
 let pontoMapaPizzaria = null;
 let enderecoMapaPizzaria = "";
+let buscaLocalControle = 0;
 let enderecoMapaPizzariaValido = false;
 let enderecoPizzariaConfirmado = "";
 let buscaLocalTimer;
@@ -528,6 +529,7 @@ async function confirmarLocalPizzaria(latitude, longitude, endereco) {
 }
 
 async function buscarEnderecoPizzaria() {
+  const controle = buscaLocalControle;
   const busca = $("#enderecoPizzaria").value.trim();
   const cidade = $("#cidadeAtendida").value.trim();
   const estado = $("#estadoAtendido").value.trim().toUpperCase();
@@ -540,7 +542,8 @@ async function buscarEnderecoPizzaria() {
   caixa.classList.remove("hidden");
   caixa.innerHTML = "<p>Buscando no mapa...</p>";
   try {
-    const itens = await api("/api/enderecos/sugestoes?q=" + encodeURIComponent(busca) + "&cidade=" + encodeURIComponent(cidade) + "&estado=" + encodeURIComponent(estado));
+    const itens = await api("/api/enderecos/sugestoes?q=" + encodeURIComponent(busca) + "&cidade=" + encodeURIComponent(cidade) + "&estado=" + encodeURIComponent(estado) + "&_=" + Date.now());
+    if (controle !== buscaLocalControle) return;
     if (!itens.length) {
       caixa.innerHTML = "<p>Nenhum endereço encontrado. Confira cidade, estado e endereço.</p>";
       return;
@@ -564,11 +567,13 @@ async function buscarEnderecoPizzaria() {
       }
     }));
   } catch (erro) {
+    if (controle !== buscaLocalControle) return;
     caixa.innerHTML = "<p>" + escapar(erro.message) + "</p>";
   }
 }
 
 $("#enderecoPizzaria").addEventListener("input", () => {
+  buscaLocalControle += 1;
   clearTimeout(buscaLocalTimer);
   buscaLocalTimer = setTimeout(buscarEnderecoPizzaria, 750);
 });
