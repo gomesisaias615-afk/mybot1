@@ -28,9 +28,9 @@ function salvarContexto() {
   catch (erro) { console.error("Não foi possível salvar o atendimento:", erro.message); }
 }
 
-function resetarUsuario(user) {
+function resetarUsuario(user, persistir = true) {
   for (const dados of Object.values(contexto)) delete dados[user];
-  salvarContexto();
+  if (persistir) salvarContexto();
 }
 
 function resetarTodosUsuarios() {

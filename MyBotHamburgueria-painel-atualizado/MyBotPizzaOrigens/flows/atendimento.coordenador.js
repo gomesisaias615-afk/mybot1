@@ -2,6 +2,7 @@ const textos = require("./textosFlows");
 const {
   contexto,
   resetarUsuario,
+  salvarContexto,
   registrarAtividade
 } = require("./contextoAtendimento");
 const {
@@ -68,8 +69,9 @@ async function atendimento(msg, client) {
 
   // "menu" sempre vence qualquer outro fluxo, inclusive pedido, endereço e pagamento.
   if (texto === "menu") {
-    resetarUsuario(user);
+    resetarUsuario(user, false);
     await mostrarMenu(msg, user);
+    salvarContexto();
     return;
   }
 
@@ -101,8 +103,9 @@ async function atendimento(msg, client) {
   }
 
   if (!aguardandoTextoLivre && !respostaPorBotao) {
-    resetarUsuario(user);
+    resetarUsuario(user, false);
     await mostrarMenu(msg, user);
+    salvarContexto();
     return;
   }
 
