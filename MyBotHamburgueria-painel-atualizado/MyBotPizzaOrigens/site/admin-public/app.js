@@ -1,7 +1,7 @@
 const $ = seletor => document.querySelector(seletor);
 const estado = { dados: null, tipoEstoque: "todos", busca: "", filtro: "todos" };
 const portalPainel = window.MYBOT_PORTAL === "atendente" ? "atendente" : "administrador";
-const guiasPermitidas = portalPainel === "atendente" ? ["pedidos", "historico"] : ["estoque", "precos", "itens", "ingredientes", "imagens", "adicionais", "horario", "taxa", "ajuda"];
+const guiasPermitidas = portalPainel === "atendente" ? ["pedidos", "historico", "ajuda"] : ["estoque", "precos", "itens", "ingredientes", "imagens", "adicionais", "horario", "taxa", "ajuda"];
 const ZOOM_INICIAL_PIZZARIA = 15;
 
 async function api(url, opcoes = {}) {
@@ -87,6 +87,7 @@ function pedidosDemonstracao() {
 async function carregar() {
   if (portalPainel === "atendente") {
     estado.dados = await api("/api/painel/dados");
+    avisarPedidosNovos(estado.dados.pedidos);
     render();
     return;
   }
@@ -861,7 +862,7 @@ function avisarPedidosNovos(pedidos) {
   if (pedidosJaVistos === null) { pedidosJaVistos = ids; return; }
   const novos = (pedidos || []).filter(pedido => !pedidosJaVistos.has(String(pedido.id)));
   pedidosJaVistos = ids;
-  if (!novos.length || Notification.permission !== "granted") return;
+  if (!novos.length || !("Notification" in window) || Notification.permission !== "granted") return;
   novos.forEach(pedido => new Notification("Novo pedido MyBot", {
     body: `Pedido #${pedido.id} recebido. Abra o painel para atender.`,
     icon: "/painel/mybot-logo-verde.png",
@@ -943,6 +944,23 @@ estado.guia = portalPainel === "atendente" ? "pedidos" : "estoque";
 estado.fase = "confirmar";
 estado.modalidade = "entrega";
 
+function configurarAjudaDoPortal() {
+  const secao = document.querySelector(".guia-ajuda");
+  const detalhes = secao?.querySelector(".ajuda-detalhada");
+  if (!secao || !detalhes) return;
+  const atendente = portalPainel === "atendente";
+  const etiqueta = secao.querySelector(".eyebrow");
+  const introducao = secao.querySelector(".ajuda-intro");
+  if (etiqueta) etiqueta.textContent = atendente ? "GUIA DO ATENDENTE" : "GUIA DO ADMINISTRADOR";
+  if (atendente) {
+    if (introducao) introducao.textContent = "Use este guia para receber pedidos, acompanhar o atendimento e manter o cliente informado.";
+    detalhes.innerHTML = `<article><span>1</span><div><h3>Pedidos</h3><p>Acompanhe os pedidos que chegam em tempo real. Confirme o recebimento e avance cada pedido pelas etapas de preparo, pronto e entrega.</p><small>O cliente recebe avisos conforme o status é atualizado.</small></div></article><article><span>2</span><div><h3>Histórico</h3><p>Consulte pedidos concluídos, cancelados ou já entregues. Esta área ajuda a localizar informações de atendimentos anteriores.</p></div></article><article><span>3</span><div><h3>Notificações</h3><p>Toque em “Receber notificações” no topo do painel e escolha Permitir no navegador. Assim, o painel avisa quando chegar um novo pedido.</p><small>Deixe o navegador com permissão para não perder nenhum aviso.</small></div></article>`;
+    return;
+  }
+  if (introducao) introducao.textContent = "Use este guia para configurar o cardápio e as funções do delivery. As alterações salvas aparecem no bot e no cardápio digital.";
+  detalhes.querySelectorAll("article").forEach((artigo, indice) => { if (indice < 2) artigo.remove(); });
+  detalhes.querySelectorAll("article").forEach((artigo, indice) => { const numero = artigo.querySelector("span"); if (numero) numero.textContent = String(indice + 1); });
+}
 function aplicarRestricoesDoPortal() {
   document.querySelectorAll(".guia-principal").forEach(botao => {
     botao.hidden = !guiasPermitidas.includes(botao.dataset.guia);
@@ -950,6 +968,7 @@ function aplicarRestricoesDoPortal() {
   document.querySelectorAll(".secao-painel").forEach(secao => {
     secao.hidden = !guiasPermitidas.includes(secao.dataset.secao);
   });
+  configurarAjudaDoPortal();
   const titulo = portalPainel === "atendente" ? "Portal do atendente" : "Portal administrativo";
   document.querySelectorAll(".marca-login small").forEach(el => { el.textContent = titulo; });
   const tituloPortal = $("#tituloPortal");
@@ -1761,3 +1780,5 @@ document.addEventListener("input",e=>{if(e.target.id==="buscarImagens")renderIma
 document.querySelectorAll("[data-tipo-imagem]").forEach(b=>b.addEventListener("click",()=>{estado.tipoImagem=b.dataset.tipoImagem;document.querySelectorAll("[data-tipo-imagem]").forEach(x=>x.classList.toggle("ativa",x===b));renderImagens()}));
 function lerImagemArquivo(arquivo){return new Promise((resolve,reject)=>{if(!arquivo)return reject(new Error("Escolha uma imagem."));if(arquivo.size>3*1024*1024)return reject(new Error("A imagem deve ter no máximo 3 MB."));const leitor=new FileReader();leitor.onload=()=>resolve(leitor.result);leitor.onerror=()=>reject(new Error("Não foi possível ler a imagem."));leitor.readAsDataURL(arquivo)})}
 document.addEventListener("click",async e=>{const publicar=e.target.closest("[data-publicar-imagem]"),remover=e.target.closest("[data-remover-imagem]");if(!publicar&&!remover)return;const botao=publicar||remover,x=JSON.parse(decodeURIComponent(botao.dataset[publicar?"publicarImagem":"removerImagem"]));try{botao.disabled=true;if(remover){if(!confirm("Remover a imagem deste produto?"))return;await api("/api/painel/imagens/"+encodeURIComponent(x.tipo)+"/"+encodeURIComponent(x.chave),{method:"DELETE"});toast("Imagem removida do cardápio.")}else{const campo=document.querySelector('[data-arquivo-imagem="'+encodeURIComponent(JSON.stringify(x))+'"]'),imagem=await lerImagemArquivo(campo?.files?.[0]);await api("/api/painel/imagens/"+encodeURIComponent(x.tipo)+"/"+encodeURIComponent(x.chave),{method:"PUT",body:JSON.stringify({imagem})});toast("Imagem publicada no cardápio.")}estado.imagensProdutos=await api("/api/painel/imagens");renderImagens()}catch(erro){toast(erro.message)}finally{botao.disabled=false}});
+
+
