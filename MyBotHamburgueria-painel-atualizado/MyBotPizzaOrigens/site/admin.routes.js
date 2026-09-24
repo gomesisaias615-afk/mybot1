@@ -19,10 +19,13 @@ const router = express.Router();
 const publicDir = path.join(__dirname, "admin-public");
 const appPublicDir = path.join(__dirname, "app-public");
 const installPublicDir = path.join(__dirname, "install-public");
-// Os painéis exigem nova senha após uma hora. O acesso geral do MyBot fica
-// persistente por dispositivo; o Chrome limita cookies persistentes a 400 dias.
-// Alterar MYBOT_APP_ACCESS_TOKEN invalida imediatamente todas essas sessões.
-const DURACAO_SESSAO = 60 * 60 * 1000;
+// Os acessos ficam persistentes no dispositivo. O Chrome limita cookies
+// persistentes a 400 dias. Alterar um token no Render invalida as sessões
+// assinadas com aquele token.
+// Cada token é solicitado uma única vez por dispositivo. O navegador mantém
+// a autorização por até 400 dias, limite usual dos cookies persistentes.
+// Alterar o token correspondente no Render invalida o acesso já concedido.
+const DURACAO_SESSAO = 400 * 24 * 60 * 60 * 1000;
 const DURACAO_SESSAO_APP = 400 * 24 * 60 * 60 * 1000;
 const COOKIE_PAINEL_LEGADO = "mybot_painel_seguro";
 const COOKIE_APP = "mybot_app_acesso";
@@ -36,6 +39,33 @@ const ARQUIVO_FICHAS_PUBLICAS = garantirArquivo("fichasEntregaCompartilhadas.jso
 const ARQUIVO_ADICIONAIS = garantirArquivo("adicionais.json", "data/adicionais.json", {});
 const ARQUIVO_DESCRICOES_BEBIDAS = garantirArquivo("descricoesbebidas.json", "data/descricoesbebidas.json", {});
 const DURACAO_FICHA_PUBLICA = 7 * 24 * 60 * 60 * 1000;
+const clientesEventosPainel = new Set();
+let filaAtualizacaoPedidos = Promise.resolve();
+
+function emitirAtualizacaoPedidos(pedido) {
+  const evento = `event: pedidos\ndata: ${JSON.stringify({
+    id: String(pedido.id),
+    status: pedido.status,
+    atualizadoEm: pedido.atualizadoEm
+  })}\n\n`;
+  for (const resposta of clientesEventosPainel) resposta.write(evento);
+}
+
+async function serializarAtualizacaoPedido(req, res, next) {
+  let liberar;
+  const anterior = filaAtualizacaoPedidos;
+  filaAtualizacaoPedidos = new Promise(resolve => { liberar = resolve; });
+  await anterior.catch(() => {});
+  let liberado = false;
+  const finalizar = () => {
+    if (liberado) return;
+    liberado = true;
+    liberar();
+  };
+  res.once("finish", finalizar);
+  res.once("close", finalizar);
+  next();
+}
 
 function escaparSvg(valor) {
   return String(valor ?? "").replace(/[&<>\"']/g, caractere => ({
@@ -106,7 +136,7 @@ function cookies(req) {
 function criarSessao(res, perfil = "administrador") {
   // A sessão não pode depender da memória do processo: no Render uma próxima
   // chamada pode chegar a outra instância. O cookie é assinado pelo token do
-  // painel e continua válido por 24 horas em qualquer instância.
+  // painel e continua válido por dispositivo em qualquer instância.
   const emitidoEm = String(Date.now());
   const aleatorio = crypto.randomBytes(24).toString("base64url");
   const conteudo = `${emitidoEm}.${aleatorio}`;
@@ -684,7 +714,25 @@ async function notificarStatusCliente(pedido, status) {
   }
   return { enviada: false, motivo: ultimoErro?.message || "falha_no_envio" };
 }
-router.patch("/api/painel/pedidos/:id/status", exigirAutenticacao, async (req, res) => {
+router.get("/api/painel/eventos", exigirAutenticacao, (req, res) => {
+  res.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no"
+  });
+  res.flushHeaders?.();
+  res.write("retry: 3000\nevent: conectado\ndata: {}\n\n");
+  clientesEventosPainel.add(res);
+  const manterVivo = setInterval(() => res.write(": mantendo conexão\n\n"), 25000);
+  manterVivo.unref?.();
+  req.on("close", () => {
+    clearInterval(manterVivo);
+    clientesEventosPainel.delete(res);
+  });
+});
+
+router.patch("/api/painel/pedidos/:id/status", exigirAutenticacao, serializarAtualizacaoPedido, async (req, res) => {
   const permitidos = new Set(["aguardando_pagamento", "pago", "confirmado", "em_preparo", "pronto", "compartilhado", "saiu_entrega", "concluido", "cancelado"]);
   const status = String(req.body?.status || "");
   if (!permitidos.has(status)) return res.status(400).json({ erro: "Status inválido." });
@@ -694,6 +742,28 @@ router.patch("/api/painel/pedidos/:id/status", exigirAutenticacao, async (req, r
   const pedido = pedidos.find(item => String(item.id) === req.params.id);
   if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
   const statusAnterior = pedido.status;
+  if (statusAnterior === status) {
+    return res.json({ ...pedido, notificacao: { enviada: false, motivo: "status_inalterado" }, sincronizado: true });
+  }
+  const proximos = {
+    aguardando_pagamento: ["pago", "confirmado", "cancelado"],
+    pago: ["confirmado", "em_preparo", "cancelado"],
+    confirmado: ["em_preparo", "cancelado"],
+    confirmado_pagamento_local: ["em_preparo", "cancelado"],
+    em_preparo: ["pronto", "cancelado"],
+    pronto: ["compartilhado", "saiu_entrega", "concluido", "cancelado"],
+    compartilhado: ["saiu_entrega", "concluido", "cancelado"],
+    saiu_entrega: ["concluido"],
+    concluido: [],
+    cancelado: []
+  };
+  if (!(proximos[statusAnterior] || []).includes(status)) {
+    return res.status(409).json({
+      erro: "Este pedido já foi atualizado em outro dispositivo. O painel será sincronizado.",
+      statusAtual: statusAnterior,
+      atualizadoEm: pedido.atualizadoEm || null
+    });
+  }
   pedido.status = status;
   pedido.atualizadoEm = new Date().toISOString();
   if (status === "pago" && !pedido.pagoEm) pedido.pagoEm = pedido.atualizadoEm;
@@ -708,7 +778,8 @@ router.patch("/api/painel/pedidos/:id/status", exigirAutenticacao, async (req, r
     });
   }
   fs.writeFileSync(arquivo, JSON.stringify(pedidos, null, 2), "utf8");
-  res.json({ ...pedido, notificacao });
+  emitirAtualizacaoPedidos(pedido);
+  res.json({ ...pedido, notificacao, sincronizado: true });
 });
 
 router.get("/api/painel/configuracao-publica", (req, res) => {
