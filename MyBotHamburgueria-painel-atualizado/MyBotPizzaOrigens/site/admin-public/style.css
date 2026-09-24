@@ -466,4 +466,4 @@ body.modal-local-aberto{overflow:hidden}
 .receber-notificacoes.indisponivel{opacity:.65!important;background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.1)!important}
 @media(max-width:720px){.receber-notificacoes{min-width:190px;width:auto;min-height:48px;padding:7px 10px!important;justify-content:flex-start}.receber-notificacoes .notificacao-texto{display:grid}.receber-notificacoes .notificacao-icone{width:30px;height:30px}.top-acoes{gap:7px}}
 
-@media(max-width:720px){html,body{touch-action:pan-x pan-y}button,a,input,select,textarea,[role="button"]{touch-action:manipulation}.topbar{width:100%;max-width:100vw}.top-acoes{min-width:0}.receber-notificacoes{max-width:min(210px,55vw)}}
+@media(max-width:720px){html,body{touch-action:pan-x pan-y}button,a,input,select,textarea,[role="button"]{touch-action:manipulation}.topbar{width:100%;max-width:100vw}.top-acoes{min-width:0}.receber-notificacoes{max-width:min(210px,55vw)}.guias-principais{display:flex!important;overflow-x:auto!important;flex-wrap:nowrap!important;scroll-behavior:smooth}.guia-principal{flex:0 0 auto!important;min-width:max-content!important;touch-action:manipulation!important}}
