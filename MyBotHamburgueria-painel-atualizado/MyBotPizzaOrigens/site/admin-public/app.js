@@ -1,7 +1,7 @@
 const $ = seletor => document.querySelector(seletor);
 const estado = { dados: null, tipoEstoque: "todos", busca: "", filtro: "todos" };
 const portalPainel = window.MYBOT_PORTAL === "atendente" ? "atendente" : "administrador";
-const guiasPermitidas = portalPainel === "atendente" ? ["pedidos", "historico", "ajuda"] : ["estoque", "precos", "itens", "ingredientes", "imagens", "adicionais", "horario", "taxa", "ajuda"];
+const guiasPermitidas = portalPainel === "atendente" ? ["pedidos", "historico", "estoque", "ajuda"] : ["estoque", "precos", "itens", "ingredientes", "imagens", "adicionais", "horario", "taxa", "ajuda"];
 const ZOOM_INICIAL_PIZZARIA = 15;
 
 async function api(url, opcoes = {}) {
@@ -896,27 +896,24 @@ function atualizarBotaoNotificacoes() {
   botao.hidden = false;
   botao.disabled = false;
   botao.classList.remove("ativo", "bloqueado", "indisponivel");
-
   if (!window.isSecureContext) {
-    botao.classList.add("indisponivel");
-    botao.disabled = true;
-    botao.innerHTML = conteudoBotaoNotificacoes("indisponivel", "Abra pelo HTTPS ou aplicativo");
-    return;
+    botao.classList.add("indisponivel"); botao.disabled = true;
+    botao.innerHTML = conteudoBotaoNotificacoes("indisponivel", "Abra pelo HTTPS ou aplicativo"); return;
   }
   if (!("Notification" in window)) {
     botao.classList.add("indisponivel");
-    botao.disabled = true;
-    botao.innerHTML = conteudoBotaoNotificacoes("indisponivel", "Abra no Chrome, Safari ou aplicativo instalado");
-    return;
+    botao.innerHTML = conteudoBotaoNotificacoes("indisponivel", "Abra no Chrome, Safari ou aplicativo instalado"); return;
   }
-
   if (Notification.permission === "granted") {
     if (localStorage.getItem("mybot-notificacoes-ativas") === "0") {
       botao.innerHTML = conteudoBotaoNotificacoes("padrao", "Notificações desativadas — toque para ativar");
+    } else if (localStorage.getItem("mybot-push-registrado") === "0") {
+      botao.classList.add("bloqueado");
+      botao.innerHTML = conteudoBotaoNotificacoes("bloqueado", localStorage.getItem("mybot-push-erro") || "Falha ao conectar — toque para tentar novamente");
     } else {
       botao.classList.add("ativo");
-      botao.innerHTML = conteudoBotaoNotificacoes("ativo", "Notificações ativadas — toque para desativar");
-      registrarPushServidor().catch(() => {});
+      botao.innerHTML = conteudoBotaoNotificacoes("ativo", localStorage.getItem("mybot-push-registrado") === "1" ? "Web Push conectado — toque para desativar" : "Conectando ao Web Push...");
+      registrarPushServidor().catch(() => { atualizarBotaoNotificacoes(); });
     }
   } else if (Notification.permission === "denied") {
     botao.classList.add("bloqueado");
@@ -925,68 +922,97 @@ function atualizarBotaoNotificacoes() {
     botao.innerHTML = conteudoBotaoNotificacoes("padrao", "Toque para permitir neste aparelho");
   }
 }
-
+function conteudoBotaoNotificacoes(estado, detalhe) {
+  return `<span class="notificacao-icone" aria-hidden="true">${estado === "ativo" ? "✓" : "🔔"}</span><span class="notificacao-texto"><strong>Receber notificações</strong><small>${detalhe}</small></span>`;
+}
 function chavePushEmBytes(chave) {
   const base64 = `${chave}${"=".repeat((4 - chave.length % 4) % 4)}`.replace(/-/g, "+").replace(/_/g, "/");
   return Uint8Array.from(atob(base64), caractere => caractere.charCodeAt(0));
 }
 let registroPushEmAndamento = null;
 async function registrarPushServidor() {
-  if (!("serviceWorker" in navigator) || Notification.permission !== "granted") return false;
+  if (!("serviceWorker" in navigator)) throw new Error("Service Worker não disponível neste aplicativo.");
+  if (!("PushManager" in window)) throw new Error("Este Chrome não disponibilizou o PushManager.");
+  if (Notification.permission !== "granted") throw new Error("A permissão de notificações não está liberada.");
   if (registroPushEmAndamento) return registroPushEmAndamento;
   registroPushEmAndamento = (async () => {
-    const registro = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
-    const { publicKey } = await api("/api/painel/push/chave");
+    let registro;
+    try { registro = await navigator.serviceWorker.register("/app/service-worker.js", { scope: "/app/" }); }
+    catch { throw new Error("Falha ao instalar o serviço do aplicativo. Reinstale o MyBot pelo Chrome."); }
+    let publicKey;
+    try { ({ publicKey } = await api("/api/painel/push/chave")); }
+    catch { throw new Error("O servidor Web Push não respondeu. Verifique se o novo deploy terminou."); }
+    if (!publicKey) throw new Error("O servidor não forneceu a chave Web Push.");
     let assinatura = await registro.pushManager.getSubscription();
-    if (!assinatura) assinatura = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chavePushEmBytes(publicKey) });
-    await api("/api/painel/push/assinar", { method: "POST", body: JSON.stringify(assinatura.toJSON()) });
+    if (!assinatura) {
+      try { assinatura = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chavePushEmBytes(publicKey) }); }
+      catch (erro) { throw new Error(`O celular recusou o cadastro Web Push (${erro?.name || "erro"}).`); }
+    }
+    try { await api("/api/painel/push/assinar", { method: "POST", body: JSON.stringify(assinatura.toJSON()) }); }
+    catch { throw new Error("O servidor não conseguiu salvar este celular."); }
+    localStorage.setItem("mybot-push-registrado", "1");
+    localStorage.removeItem("mybot-push-erro");
     return true;
-  })().finally(() => { registroPushEmAndamento = null; });
+  })().catch(erro => { localStorage.setItem("mybot-push-registrado", "0"); localStorage.setItem("mybot-push-erro", erro.message || "Falha ao conectar ao Web Push."); throw erro; }).finally(() => { registroPushEmAndamento = null; });
   return registroPushEmAndamento;
 }
 async function desativarPushServidor() {
   if (!("serviceWorker" in navigator)) return;
-  const registro = await navigator.serviceWorker.getRegistration("/");
+  const registro = await navigator.serviceWorker.getRegistration("/app/");
   const assinatura = await registro?.pushManager.getSubscription();
   await assinatura?.unsubscribe();
+  localStorage.removeItem("mybot-push-registrado");
 }
 async function ativarNotificacoes() {
   if (!window.isSecureContext) return toast("Para ativar os avisos, abra o portal pelo endereço HTTPS ou pelo aplicativo instalado.");
   if (!("Notification" in window)) return toast("Este navegador não permite notificações aqui. Abra o portal no Chrome, Safari ou pelo aplicativo instalado. No iPhone, adicione o MyBot à Tela de Início pelo Safari.");
   if (Notification.permission === "granted") {
     const ativadas = localStorage.getItem("mybot-notificacoes-ativas") !== "0";
-    localStorage.setItem("mybot-notificacoes-ativas", ativadas ? "0" : "1");
-    if (ativadas) await desativarPushServidor().catch(() => {}); else await registrarPushServidor().catch(() => {});
+    const conectado = localStorage.getItem("mybot-push-registrado") === "1";
+    const desativar = ativadas && conectado;
+    localStorage.setItem("mybot-notificacoes-ativas", desativar ? "0" : "1");
+    if (desativar) await desativarPushServidor().catch(() => {});
+    else try { await registrarPushServidor(); } catch (erro) { atualizarBotaoNotificacoes(); return toast(erro.message || "Não foi possível conectar ao Web Push."); }
     atualizarBotaoNotificacoes();
-    return toast(ativadas ? "Notificações desativadas neste aparelho." : "Notificações ativadas neste aparelho.");
+    atualizarSeloApp(estado.dados?.pedidos || []);
+    return toast(desativar ? "Notificações desativadas neste aparelho." : "Web Push conectado neste aparelho.");
   }
-  if (Notification.permission === "denied") {
-    return toast("Para liberar: entre em Configurações → Apps → MyBot → Notificações e ative Permitir notificações. Se MyBot não aparecer, faça o mesmo no Chrome ou Safari.");
-  }
-
+  if (Notification.permission === "denied") return toast("Para liberar: entre em Configurações → Apps → MyBot → Notificações e ative Permitir notificações. Se MyBot não aparecer, faça o mesmo no Chrome ou Safari.");
   const botao = $("#ativarNotificacoes");
   botao.disabled = true;
   botao.innerHTML = conteudoBotaoNotificacoes("padrao", "Confirme em Permitir na mensagem do navegador");
   try {
+    if ("serviceWorker" in navigator) await navigator.serviceWorker.register("/app/service-worker.js", { scope: "/app/" });
     const permissao = await Notification.requestPermission();
     atualizarBotaoNotificacoes();
-    if (permissao === "granted") { localStorage.setItem("mybot-notificacoes-ativas", "1"); await registrarPushServidor(); atualizarSeloApp(estado.dados?.pedidos || []); toast("Pronto! Você receberá avisos de novos pedidos."); } else if (permissao === "denied") {
-      toast("Para liberar: entre em Configurações → Apps → MyBot → Notificações e ative Permitir notificações. Se MyBot não aparecer, procure Chrome ou Safari.");
-    } else {
-      toast("Nenhuma escolha foi feita. Toque em Ativar avisos quando quiser tentar novamente.");
-    }
+    if (permissao === "granted") { localStorage.setItem("mybot-notificacoes-ativas", "1"); await registrarPushServidor(); atualizarSeloApp(estado.dados?.pedidos || []); toast("Pronto! Você receberá avisos de novos pedidos."); }
+    else if (permissao === "denied") toast("Para liberar: entre em Configurações → Apps → MyBot → Notificações e ative Permitir notificações. Se MyBot não aparecer, procure Chrome ou Safari.");
+    else toast("Nenhuma escolha foi feita. Toque em Receber notificações quando quiser tentar novamente.");
   } catch {
     atualizarBotaoNotificacoes();
     toast("O navegador não conseguiu abrir a permissão. Tente pelo aplicativo instalado ou pelas configurações do site.");
   }
 }
-
-function atualizarSeloApp(pedidos = []) {
-  if (!("setAppBadge" in navigator)) return;
+async function atualizarSeloApp(pedidos = []) {
   const habilitadas = "Notification" in window && Notification.permission === "granted" && localStorage.getItem("mybot-notificacoes-ativas") !== "0";
-  const quantidade = habilitadas ? pedidos.filter(pedido => !["aguardando_pagamento", "saiu_entrega", "concluido", "cancelado"].includes(pedido.status)).length : 0;
-  if (quantidade > 0) navigator.setAppBadge(quantidade).catch(() => {});
-  else navigator.clearAppBadge?.().catch(() => {});
+  const pendentes = habilitadas ? pedidos.filter(pedido => !pedido.demonstracao && !String(pedido.id || "").startsWith("DEMO-") && !["aguardando_pagamento", "saiu_entrega", "concluido", "cancelado"].includes(pedido.status)) : [];
+  const quantidade = pendentes.length;
+  if ("setAppBadge" in navigator) {
+    try { await navigator.setAppBadge(quantidade); } catch {}
+  }
+  if (quantidade === 0 && "clearAppBadge" in navigator) {
+    try { await navigator.clearAppBadge(); } catch {}
+  }
+  if ("serviceWorker" in navigator) {
+    try {
+      const registro = await navigator.serviceWorker.getRegistration("/app/");
+      const idsPendentes = new Set(pendentes.map(pedido => `pedido-${pedido.id}`));
+      const notificacoes = await registro?.getNotifications?.() || [];
+      notificacoes.forEach(notificacao => {
+        if (notificacao.tag?.startsWith("pedido-") && !idsPendentes.has(notificacao.tag)) notificacao.close();
+      });
+    } catch {}
+  }
 }
 let permissaoNotificacoesObservada = false;
 function acompanharPermissaoNotificacoes() {
@@ -1008,20 +1034,20 @@ function avisarPedidosNovos(pedidos) {
   pedidosJaVistos = new Set((pedidos || []).map(pedido => String(pedido.id)));
   // O aviso é enviado exclusivamente pelo Web Push do servidor.
 }async function atualizarPedidosAutomaticamente() {
-  if (
-    atualizacaoPedidosEmAndamento ||
-    estado.guia !== "pedidos" ||
-    $("#aplicacao").classList.contains("oculto")
-  ) return;
-
+  if (atualizacaoPedidosEmAndamento || document.visibilityState === "hidden" || $("#aplicacao").classList.contains("oculto")) return;
   atualizacaoPedidosEmAndamento = true;
   try {
-    estado.dados = await api(`/api/painel/dados?_=${Date.now()}`, { cache: "no-store" });
-    avisarPedidosNovos(estado.dados.pedidos);
-    renderPedidos();
+    const dadosAtualizados = await api(`/api/painel/dados?_=${Date.now()}`, { cache: "no-store" });
+    const pedidosMudaram = JSON.stringify(estado.dados?.pedidos || []) !== JSON.stringify(dadosAtualizados.pedidos || []);
+    const estoqueMudou = JSON.stringify(estado.dados?.estoque || {}) !== JSON.stringify(dadosAtualizados.estoque || {});
+    estado.dados = dadosAtualizados;
+    if (pedidosMudaram || estoqueMudou) {
+      avisarPedidosNovos(estado.dados.pedidos || []);
+      render();
+      aplicarGuia(estado.guia || (portalPainel === "atendente" ? "pedidos" : "estoque"));
+    }
   } catch {
-    // A verificação de sessão existente continua responsável por mostrar o
-    // login se ela expirar; uma falha momentânea não deve retirar o painel.
+    // Uma falha momentânea não deve retirar o painel.
   } finally {
     atualizacaoPedidosEmAndamento = false;
   }
@@ -1085,9 +1111,10 @@ document.addEventListener("visibilitychange", () => {
 
 let canalEventosPainel = null;
 function iniciarSincronizacaoEntreDispositivos() {
-  if (portalPainel !== "atendente" || canalEventosPainel || !("EventSource" in window)) return;
+  if (canalEventosPainel || !("EventSource" in window)) return;
   canalEventosPainel = new EventSource("/api/painel/eventos");
   canalEventosPainel.addEventListener("pedidos", () => atualizarPedidosAutomaticamente());
+  canalEventosPainel.addEventListener("estoque", () => atualizarPedidosAutomaticamente());
   canalEventosPainel.onerror = () => {
     // O navegador reconecta automaticamente. A consulta periódica abaixo
     // mantém o painel atualizado mesmo em redes que bloqueiam SSE.
