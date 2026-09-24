@@ -912,7 +912,7 @@ function atualizarBotaoNotificacoes() {
 
   if (Notification.permission === "granted") {
     botao.classList.add("ativo");
-    botao.innerHTML = conteudoBotaoNotificacoes("ativo", "Ativadas neste aparelho");
+    botao.innerHTML = conteudoBotaoNotificacoes("ativo", "Notificações ativadas");
   } else if (Notification.permission === "denied") {
     botao.classList.add("bloqueado");
     botao.innerHTML = conteudoBotaoNotificacoes("bloqueado", "Bloqueadas — toque para liberar");
@@ -926,7 +926,7 @@ async function ativarNotificacoes() {
   if (!("Notification" in window)) return toast("Este navegador não permite notificações aqui. Abra o portal no Chrome, Safari ou pelo aplicativo instalado. No iPhone, adicione o MyBot à Tela de Início pelo Safari.");
   if (Notification.permission === "granted") return toast("Os avisos de novos pedidos já estão ativados.");
   if (Notification.permission === "denied") {
-    return toast("Os avisos estão bloqueados no navegador. Abra as configurações deste site, escolha Notificações e marque Permitir.");
+    return toast("Para liberar: entre em Configurações → Apps → MyBot → Notificações e ative Permitir notificações. Se MyBot não aparecer, faça o mesmo no Chrome ou Safari.");
   }
 
   const botao = $("#ativarNotificacoes");
@@ -938,7 +938,7 @@ async function ativarNotificacoes() {
     if (permissao === "granted") {
       toast("Pronto! Você receberá avisos de novos pedidos.");
     } else if (permissao === "denied") {
-      toast("Os avisos foram bloqueados. Você pode liberá-los nas configurações deste site.");
+      toast("Para liberar: entre em Configurações → Apps → MyBot → Notificações e ative Permitir notificações. Se MyBot não aparecer, procure Chrome ou Safari.");
     } else {
       toast("Nenhuma escolha foi feita. Toque em Ativar avisos quando quiser tentar novamente.");
     }
@@ -948,6 +948,20 @@ async function ativarNotificacoes() {
   }
 }
 
+let permissaoNotificacoesObservada = false;
+function acompanharPermissaoNotificacoes() {
+  if (permissaoNotificacoesObservada || portalPainel !== "atendente") return;
+  permissaoNotificacoesObservada = true;
+  window.addEventListener("focus", atualizarBotaoNotificacoes);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") atualizarBotaoNotificacoes();
+  });
+  if (navigator.permissions?.query) {
+    navigator.permissions.query({ name: "notifications" })
+      .then(permissao => permissao.addEventListener("change", atualizarBotaoNotificacoes))
+      .catch(() => {});
+  }
+}
 function avisarPedidosNovos(pedidos) {
   if (portalPainel !== "atendente") return;
   const ids = new Set((pedidos || []).map(pedido => String(pedido.id)));
@@ -1028,7 +1042,7 @@ document.addEventListener("visibilitychange", () => {
     validarSessaoPainel();
   }
 });
-setInterval(() => { if (!$("#aplicacao").classList.contains("oculto") && podeAtualizarDadosAutomaticamente()) carregar().catch(() => {}); }, 30000);
+// A sincronização leve de pedidos evita redesenhar o painel enquanto alguém toca nos controles.
 
 let canalEventosPainel = null;
 function iniciarSincronizacaoEntreDispositivos() {
@@ -1059,7 +1073,7 @@ function configurarAjudaDoPortal() {
   if (etiqueta) etiqueta.textContent = atendente ? "GUIA DO ATENDENTE" : "GUIA DO ADMINISTRADOR";
   if (atendente) {
     if (introducao) introducao.textContent = "Use este guia para receber pedidos, acompanhar o atendimento e manter o cliente informado.";
-    detalhes.innerHTML = `<article><span>1</span><div><h3>Pedidos</h3><p>Acompanhe os pedidos que chegam em tempo real. Confirme o recebimento e avance cada pedido pelas etapas de preparo, pronto e entrega.</p><small>Vários atendentes podem usar o portal ao mesmo tempo; as telas são sincronizadas automaticamente.</small></div></article><article><span>2</span><div><h3>Histórico</h3><p>Consulte pedidos concluídos, cancelados ou já entregues. Esta área ajuda a localizar informações de atendimentos anteriores.</p></div></article><article><span>3</span><div><h3>Avisos de novos pedidos</h3><p>No topo do portal, toque em “Ativar avisos” e depois em Permitir na pergunta do navegador. Quando aparecer “Avisos ativados”, este dispositivo está pronto para avisar sobre novos pedidos.</p><small>A permissão é individual para cada celular ou computador. Ative separadamente em cada aparelho usado pela equipe.</small></div></article><article><span>4</span><div><h3>Quando a permissão não aparece</h3><p>Se aparecer “Avisos bloqueados”, abra as configurações do site no navegador, entre em Notificações e escolha Permitir. Se aparecer “indisponível”, abra o portal pelo endereço HTTPS no Chrome ou pelo aplicativo instalado.</p><small>Navegadores internos do Instagram e WhatsApp podem impedir notificações. Nesses casos, use o Chrome ou o aplicativo do MyBot.</small></div></article>`;
+    detalhes.innerHTML = `<article><span>1</span><div><h3>Pedidos</h3><p>Acompanhe os pedidos que chegam em tempo real. Confirme o recebimento e avance cada pedido pelas etapas de preparo, pronto e entrega.</p><small>Vários atendentes podem usar o portal ao mesmo tempo; as telas são sincronizadas automaticamente.</small></div></article><article><span>2</span><div><h3>Histórico</h3><p>Consulte pedidos concluídos, cancelados ou já entregues. Esta área ajuda a localizar informações de atendimentos anteriores.</p></div></article><article><span>3</span><div><h3>Avisos de novos pedidos</h3><p>No topo do portal, toque em “Receber notificações” e depois em Permitir na pergunta do navegador. Quando aparecer “Notificações ativadas”, este dispositivo está pronto para avisar sobre novos pedidos.</p><small>A permissão é individual para cada celular ou computador. Ative separadamente em cada aparelho usado pela equipe.</small></div></article><article><span>4</span><div><h3>Quando a permissão não aparece</h3><p>Se aparecer “Avisos bloqueados”, abra as configurações do site no navegador, entre em Notificações e escolha Permitir. Se aparecer “indisponível”, abra o portal pelo endereço HTTPS no Chrome ou pelo aplicativo instalado.</p><small>Navegadores internos do Instagram e WhatsApp podem impedir notificações. Nesses casos, use o Chrome ou o aplicativo do MyBot.</small></div></article>`;
     return;
   }
   if (introducao) introducao.textContent = "Use este guia para configurar o cardápio e as funções do delivery. As alterações salvas aparecem no bot e no cardápio digital.";
