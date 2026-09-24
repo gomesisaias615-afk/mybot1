@@ -944,7 +944,7 @@ async function ativarNotificacoes() {
   try {
     const permissao = await Notification.requestPermission();
     atualizarBotaoNotificacoes();
-    if (permissao === "granted") { localStorage.setItem("mybot-notificacoes-ativas", "1"); toast("Pronto! Você receberá avisos de novos pedidos."); } else if (permissao === "denied") {
+    if (permissao === "granted") { localStorage.setItem("mybot-notificacoes-ativas", "1"); atualizarSeloApp(estado.dados?.pedidos || []); toast("Pronto! Você receberá avisos de novos pedidos."); } else if (permissao === "denied") {
       toast("Para liberar: entre em Configurações → Apps → MyBot → Notificações e ative Permitir notificações. Se MyBot não aparecer, procure Chrome ou Safari.");
     } else {
       toast("Nenhuma escolha foi feita. Toque em Ativar avisos quando quiser tentar novamente.");
@@ -955,6 +955,31 @@ async function ativarNotificacoes() {
   }
 }
 
+async function mostrarNotificacaoPedido(pedido) {
+  const opcoes = {
+    body: `Pedido #${pedido.id} recebido. Abra o painel para atender.`,
+    icon: "/painel/mascote-saborear.png",
+    badge: "/painel/mascote-saborear.png",
+    tag: `pedido-${pedido.id}`,
+    renotify: true,
+    data: { url: "/atendente" }
+  };
+  try {
+    if ("serviceWorker" in navigator) {
+      const registro = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+      await registro.showNotification("Novo pedido MyBot", opcoes);
+      return;
+    }
+  } catch {}
+  try { new Notification("Novo pedido MyBot", opcoes); } catch {}
+}
+function atualizarSeloApp(pedidos = []) {
+  if (!("setAppBadge" in navigator)) return;
+  const habilitadas = "Notification" in window && Notification.permission === "granted" && localStorage.getItem("mybot-notificacoes-ativas") !== "0";
+  const quantidade = habilitadas ? pedidos.filter(pedido => !["aguardando_pagamento", "saiu_entrega", "concluido", "cancelado"].includes(pedido.status)).length : 0;
+  if (quantidade > 0) navigator.setAppBadge(quantidade).catch(() => {});
+  else navigator.clearAppBadge?.().catch(() => {});
+}
 let permissaoNotificacoesObservada = false;
 function acompanharPermissaoNotificacoes() {
   if (permissaoNotificacoesObservada || portalPainel !== "atendente") return;
@@ -971,16 +996,13 @@ function acompanharPermissaoNotificacoes() {
 }
 function avisarPedidosNovos(pedidos) {
   if (portalPainel !== "atendente") return;
+  atualizarSeloApp(pedidos);
   const ids = new Set((pedidos || []).map(pedido => String(pedido.id)));
   if (pedidosJaVistos === null) { pedidosJaVistos = ids; return; }
   const novos = (pedidos || []).filter(pedido => !pedidosJaVistos.has(String(pedido.id)));
   pedidosJaVistos = ids;
   if (!novos.length || !("Notification" in window) || Notification.permission !== "granted" || localStorage.getItem("mybot-notificacoes-ativas") === "0") return;
-  novos.forEach(pedido => new Notification("Novo pedido MyBot", {
-    body: `Pedido #${pedido.id} recebido. Abra o painel para atender.`,
-    icon: "/painel/mybot-logo-verde.png",
-    tag: `pedido-${pedido.id}`
-  }));
+  novos.forEach(mostrarNotificacaoPedido);
 }
 async function atualizarPedidosAutomaticamente() {
   if (
