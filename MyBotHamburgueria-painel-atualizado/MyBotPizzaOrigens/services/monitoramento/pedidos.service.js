@@ -3,6 +3,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const { garantirArquivo } = require("../dadosPersistentes.service");
+const { notificarNovoPedido } = require("../webPush.service");
 const pedidosPath = garantirArquivo("pedidos.json", "services/monitoramento/relatorio/pedidos.json", []);
 
 function lerJson(caminho, padrao) {
@@ -83,6 +84,7 @@ function confirmarPedidoPago(pedidoId) {
   pedido.pagoEm = new Date().toISOString();
 
   salvarJson(pedidosPath, pedidos);
+  notificarNovoPedido(pedido).catch(erro => console.error("[web-push]", erro.message));
   return pedido;
 }
 
@@ -101,6 +103,7 @@ function confirmarPedidoPagamentoLocal(pedidoId) {
   pedido.confirmadoEm = new Date().toISOString();
 
   salvarJson(pedidosPath, pedidos);
+  notificarNovoPedido(pedido).catch(erro => console.error("[web-push]", erro.message));
   return pedido;
 }
 
@@ -114,6 +117,7 @@ function confirmarPedidoTeste(pedidoId) {
   pedido.confirmadoEm = new Date().toISOString();
   pedido.atualizadoEm = pedido.confirmadoEm;
   salvarJson(pedidosPath, pedidos);
+  notificarNovoPedido(pedido).catch(erro => console.error("[web-push]", erro.message));
   return pedido;
 }
 
