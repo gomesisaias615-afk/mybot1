@@ -1121,7 +1121,7 @@ function iniciarSincronizacaoEntreDispositivos() {
   };
 }
 iniciarSincronizacaoEntreDispositivos();
-setInterval(atualizarPedidosAutomaticamente, 3000);
+setInterval(atualizarPedidosAutomaticamente, 10000);
 window.addEventListener("focus", atualizarPedidosAutomaticamente);
 
 // Experiência operacional em guias e estoque por disponibilidade.
@@ -1139,7 +1139,7 @@ function configurarAjudaDoPortal() {
   if (etiqueta) etiqueta.textContent = atendente ? "GUIA DO ATENDENTE" : "GUIA DO ADMINISTRADOR";
   if (atendente) {
     if (introducao) introducao.textContent = "Use este guia para receber pedidos, acompanhar o atendimento e manter o cliente informado.";
-    detalhes.innerHTML = `<article><span>1</span><div><h3>Pedidos</h3><p>Acompanhe os pedidos que chegam em tempo real. Confirme o recebimento e avance cada pedido pelas etapas de preparo, pronto e entrega.</p><small>Vários atendentes podem usar o portal ao mesmo tempo; as telas são sincronizadas automaticamente.</small></div></article><article><span>2</span><div><h3>Histórico</h3><p>Consulte pedidos concluídos, cancelados ou já entregues. Esta área ajuda a localizar informações de atendimentos anteriores.</p></div></article><article><span>3</span><div><h3>Avisos de novos pedidos</h3><p>No topo do portal, toque em “Receber notificações” e depois em Permitir na pergunta do navegador. Quando aparecer “Notificações ativadas”, este dispositivo está pronto para avisar sobre novos pedidos.</p><small>A permissão é individual para cada celular ou computador. Ative separadamente em cada aparelho usado pela equipe.</small></div></article><article><span>4</span><div><h3>Quando a permissão não aparece</h3><p>Se aparecer “Avisos bloqueados”, abra as configurações do site no navegador, entre em Notificações e escolha Permitir. Se aparecer “indisponível”, abra o portal pelo endereço HTTPS no Chrome ou pelo aplicativo instalado.</p><small>Navegadores internos do Instagram e WhatsApp podem impedir notificações. Nesses casos, use o Chrome ou o aplicativo do MyBot.</small></div></article>`;
+    detalhes.innerHTML = `<article><span>1</span><div><h3>Estoque</h3><p>Use o botão menos para marcar um produto como esgotado e o botão mais para liberá-lo novamente.</p><small>No portal do atendente, produtos nunca são excluídos.</small></div></article><article><span>2</span><div><h3>Pedidos</h3><p>Acompanhe os pedidos que chegam em tempo real. Confirme o recebimento e avance cada pedido pelas etapas de preparo, pronto e entrega.</p><small>Vários atendentes podem usar o portal ao mesmo tempo; as telas são sincronizadas automaticamente.</small></div></article><article><span>2</span><div><h3>Histórico</h3><p>Consulte pedidos concluídos, cancelados ou já entregues. Esta área ajuda a localizar informações de atendimentos anteriores.</p></div></article><article><span>3</span><div><h3>Avisos de novos pedidos</h3><p>No topo do portal, toque em “Receber notificações” e depois em Permitir na pergunta do navegador. Quando aparecer “Notificações ativadas”, este dispositivo está pronto para avisar sobre novos pedidos.</p><small>A permissão é individual para cada celular ou computador. Ative separadamente em cada aparelho usado pela equipe.</small></div></article><article><span>4</span><div><h3>Quando a permissão não aparece</h3><p>Se aparecer “Avisos bloqueados”, abra as configurações do site no navegador, entre em Notificações e escolha Permitir. Se aparecer “indisponível”, abra o portal pelo endereço HTTPS no Chrome ou pelo aplicativo instalado.</p><small>Navegadores internos do Instagram e WhatsApp podem impedir notificações. Nesses casos, use o Chrome ou o aplicativo do MyBot.</small></div></article>`;
     return;
   }
   if (introducao) introducao.textContent = "Use este guia para configurar o cardápio e as funções do delivery. As alterações salvas aparecem no bot e no cardápio digital.";
@@ -1470,8 +1470,10 @@ document.addEventListener("click", async evento => {
   evento.stopImmediatePropagation();
   try {
     const identificador = `${botao.dataset.tipo}|${botao.dataset.chave}`;
+    const esgotar = botao.dataset.disponibilidade === "esgotar";
+    const estoqueAtual = Number(estado.dados?.estoque?.[botao.dataset.tipo]?.[botao.dataset.chave] || 0);
     const agora = Date.now();
-    if (botao.dataset.disponibilidade === "esgotar" && window.ultimoCliqueMenosEstoque?.id === identificador && agora - window.ultimoCliqueMenosEstoque.tempo < 700) {
+    if (portalPainel === "administrador" && esgotar && window.ultimoCliqueMenosEstoque?.id === identificador && agora - window.ultimoCliqueMenosEstoque.tempo < 5000) {
       window.ultimoCliqueMenosEstoque = null;
       if (!confirm("Excluir este item do estoque e do cardápio? Esta ação não pode ser desfeita.")) return;
       await api("/api/painel/catalogo/item", { method: "DELETE", body: JSON.stringify({ tipo: botao.dataset.tipo, chave: botao.dataset.chave }) });
@@ -1479,10 +1481,15 @@ document.addEventListener("click", async evento => {
       toast("Item excluído do estoque e do cardápio.");
       return;
     }
-    window.ultimoCliqueMenosEstoque = { id: identificador, tempo: agora };
-    const quantidade = botao.dataset.disponibilidade === "esgotar" ? 0 : 10000;
+    if (portalPainel === "administrador" && esgotar) {
+      window.ultimoCliqueMenosEstoque = { id: identificador, tempo: agora };
+      if (estoqueAtual === 0) { toast("Toque novamente no menos para excluir este item."); return; }
+    } else {
+      window.ultimoCliqueMenosEstoque = null;
+    }
+    const quantidade = esgotar ? 0 : 10000;
     await atualizarEstoque(botao.dataset.tipo, botao.dataset.chave, quantidade);
-    toast(quantidade ? "Produto disponível novamente." : "Produto marcado como esgotado.");
+    toast(quantidade ? "Produto disponível novamente." : portalPainel === "administrador" ? "Produto esgotado. Toque novamente no menos para excluir." : "Produto marcado como esgotado.");
   } catch (erro) { toast(erro.message); }
 }, true);
 

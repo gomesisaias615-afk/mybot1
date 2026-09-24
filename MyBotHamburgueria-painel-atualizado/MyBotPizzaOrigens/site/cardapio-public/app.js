@@ -102,7 +102,7 @@ async function abrirCategoria(categoria) {
   window.scrollTo(0, 0);
 
   try {
-    const resposta = await fetch(caminhoApiCardapio(), { cache: "no-store" });
+    const resposta = await fetch(caminhoApiCardapio(), { cache: "no-cache" });
     if (!resposta.ok) throw new Error("Não foi possível carregar o cardápio.");
     const dados = await resposta.json();
     aplicarCategoriasAtivas(dados);
@@ -131,7 +131,7 @@ document.querySelector("#voltar").addEventListener("click", () => {
 busca.addEventListener("input", renderizar);
 limparBusca.addEventListener("click", () => { busca.value = ""; renderizar(); busca.focus(); });
 
-fetch(caminhoApiCardapio(), { cache: "no-store" })
+fetch(caminhoApiCardapio(), { cache: "no-cache" })
   .then(resposta => resposta.ok ? resposta.json() : Promise.reject())
   .then(aplicarCategoriasAtivas)
   .catch(() => {});
@@ -140,7 +140,7 @@ async function atualizarCardapioEmTempoReal() {
   if (atualizacaoCardapioEmAndamento || document.visibilityState === "hidden") return;
   atualizacaoCardapioEmAndamento = true;
   try {
-    const resposta = await fetch(caminhoApiCardapio(), { cache: "no-store" });
+    const resposta = await fetch(caminhoApiCardapio(), { cache: "no-cache" });
     if (!resposta.ok) return;
     const dados = await resposta.json();
     aplicarCategoriasAtivas(dados);
@@ -155,5 +155,5 @@ async function atualizarCardapioEmTempoReal() {
   } catch {}
   finally { atualizacaoCardapioEmAndamento = false; }
 }
-setInterval(atualizarCardapioEmTempoReal, 3000);
+setInterval(atualizarCardapioEmTempoReal, 10000);
 window.addEventListener("focus", atualizarCardapioEmTempoReal);
