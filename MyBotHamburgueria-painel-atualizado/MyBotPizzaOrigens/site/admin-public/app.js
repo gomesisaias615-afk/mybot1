@@ -981,24 +981,6 @@ async function ativarNotificacoes() {
   }
 }
 
-async function mostrarNotificacaoPedido(pedido) {
-  const opcoes = {
-    body: `Pedido #${pedido.id} recebido. Abra o painel para atender.`,
-    icon: "/painel/mascote-saborear.png",
-    badge: "/painel/mascote-saborear.png",
-    tag: `pedido-${pedido.id}`,
-    renotify: true,
-    data: { url: "/atendente" }
-  };
-  try {
-    if ("serviceWorker" in navigator) {
-      const registro = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
-      await registro.showNotification("Novo pedido MyBot", opcoes);
-      return;
-    }
-  } catch {}
-  try { new Notification("Novo pedido MyBot", opcoes); } catch {}
-}
 function atualizarSeloApp(pedidos = []) {
   if (!("setAppBadge" in navigator)) return;
   const habilitadas = "Notification" in window && Notification.permission === "granted" && localStorage.getItem("mybot-notificacoes-ativas") !== "0";
@@ -1023,14 +1005,9 @@ function acompanharPermissaoNotificacoes() {
 function avisarPedidosNovos(pedidos) {
   if (portalPainel !== "atendente") return;
   atualizarSeloApp(pedidos);
-  const ids = new Set((pedidos || []).map(pedido => String(pedido.id)));
-  if (pedidosJaVistos === null) { pedidosJaVistos = ids; return; }
-  const novos = (pedidos || []).filter(pedido => !pedidosJaVistos.has(String(pedido.id)));
-  pedidosJaVistos = ids;
-  if (!novos.length || !("Notification" in window) || Notification.permission !== "granted" || localStorage.getItem("mybot-notificacoes-ativas") === "0") return;
-  novos.forEach(mostrarNotificacaoPedido);
-}
-async function atualizarPedidosAutomaticamente() {
+  pedidosJaVistos = new Set((pedidos || []).map(pedido => String(pedido.id)));
+  // O aviso é enviado exclusivamente pelo Web Push do servidor.
+}async function atualizarPedidosAutomaticamente() {
   if (
     atualizacaoPedidosEmAndamento ||
     estado.guia !== "pedidos" ||
