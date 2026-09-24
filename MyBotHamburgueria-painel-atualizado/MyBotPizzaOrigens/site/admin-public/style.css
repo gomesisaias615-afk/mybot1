@@ -464,4 +464,4 @@ body.modal-local-aberto{overflow:hidden}
 .receber-notificacoes.bloqueado{background:rgba(231,155,48,.12)!important;border-color:rgba(239,178,91,.38)!important;color:#fff4df!important}
 .receber-notificacoes.bloqueado .notificacao-icone{background:rgba(239,178,91,.2);color:#ffc978}
 .receber-notificacoes.indisponivel{opacity:.65!important;background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.1)!important}
-@media(max-width:720px){.receber-notificacoes{min-width:0;width:42px;height:42px;padding:6px!important;justify-content:center}.receber-notificacoes .notificacao-texto{display:none}.receber-notificacoes .notificacao-icone{width:30px;height:30px}.top-acoes{gap:7px}}
+@media(max-width:720px){.receber-notificacoes{min-width:190px;width:auto;min-height:48px;padding:7px 10px!important;justify-content:flex-start}.receber-notificacoes .notificacao-texto{display:grid}.receber-notificacoes .notificacao-icone{width:30px;height:30px}.top-acoes{gap:7px}}

@@ -886,8 +886,8 @@ function podeAtualizarDadosAutomaticamente() {
 let atualizacaoPedidosEmAndamento = false;
 let pedidosJaVistos = null;
 
-function conteudoBotaoNotificacoes(estado, titulo, detalhe) {
-  return `<span class="notificacao-icone" aria-hidden="true">${estado === "ativo" ? "✓" : "♢"}</span><span class="notificacao-texto"><strong>${titulo}</strong><small>${detalhe}</small></span>`;
+function conteudoBotaoNotificacoes(estado, detalhe) {
+  return `<span class="notificacao-icone" aria-hidden="true">${estado === "ativo" ? "✓" : "🔔"}</span><span class="notificacao-texto"><strong>Receber notificações</strong><small>${detalhe}</small></span>`;
 }
 
 function atualizarBotaoNotificacoes() {
@@ -900,30 +900,30 @@ function atualizarBotaoNotificacoes() {
   if (!window.isSecureContext) {
     botao.classList.add("indisponivel");
     botao.disabled = true;
-    botao.innerHTML = conteudoBotaoNotificacoes("indisponivel", "Avisos indisponíveis", "Abra pelo HTTPS ou aplicativo");
+    botao.innerHTML = conteudoBotaoNotificacoes("indisponivel", "Abra pelo HTTPS ou aplicativo");
     return;
   }
   if (!("Notification" in window)) {
     botao.classList.add("indisponivel");
     botao.disabled = true;
-    botao.innerHTML = conteudoBotaoNotificacoes("indisponivel", "Avisos não compatíveis", "Este navegador não oferece suporte");
+    botao.innerHTML = conteudoBotaoNotificacoes("indisponivel", "Abra no Chrome, Safari ou aplicativo instalado");
     return;
   }
 
   if (Notification.permission === "granted") {
     botao.classList.add("ativo");
-    botao.innerHTML = conteudoBotaoNotificacoes("ativo", "Avisos ativados", "Novos pedidos serão sinalizados");
+    botao.innerHTML = conteudoBotaoNotificacoes("ativo", "Ativadas neste aparelho");
   } else if (Notification.permission === "denied") {
     botao.classList.add("bloqueado");
-    botao.innerHTML = conteudoBotaoNotificacoes("bloqueado", "Avisos bloqueados", "Toque para saber como liberar");
+    botao.innerHTML = conteudoBotaoNotificacoes("bloqueado", "Bloqueadas — toque para liberar");
   } else {
-    botao.innerHTML = conteudoBotaoNotificacoes("padrao", "Ativar avisos", "Receba alertas de novos pedidos");
+    botao.innerHTML = conteudoBotaoNotificacoes("padrao", "Toque para permitir neste aparelho");
   }
 }
 
 async function ativarNotificacoes() {
   if (!window.isSecureContext) return toast("Para ativar os avisos, abra o portal pelo endereço HTTPS ou pelo aplicativo instalado.");
-  if (!("Notification" in window)) return toast("Este navegador não oferece notificações.");
+  if (!("Notification" in window)) return toast("Este navegador não permite notificações aqui. Abra o portal no Chrome, Safari ou pelo aplicativo instalado. No iPhone, adicione o MyBot à Tela de Início pelo Safari.");
   if (Notification.permission === "granted") return toast("Os avisos de novos pedidos já estão ativados.");
   if (Notification.permission === "denied") {
     return toast("Os avisos estão bloqueados no navegador. Abra as configurações deste site, escolha Notificações e marque Permitir.");
@@ -931,7 +931,7 @@ async function ativarNotificacoes() {
 
   const botao = $("#ativarNotificacoes");
   botao.disabled = true;
-  botao.innerHTML = conteudoBotaoNotificacoes("padrao", "Aguardando sua escolha", "Confirme na mensagem do navegador");
+  botao.innerHTML = conteudoBotaoNotificacoes("padrao", "Confirme em Permitir na mensagem do navegador");
   try {
     const permissao = await Notification.requestPermission();
     atualizarBotaoNotificacoes();
