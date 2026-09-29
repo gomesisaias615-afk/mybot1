@@ -21,7 +21,7 @@ if (!chaves.publicKey || !chaves.privateKey) {
   chaves = webpush.generateVAPIDKeys();
   salvar(arquivoChaves, chaves);
 }
-webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:mybot@localhost", chaves.publicKey, chaves.privateKey);
+webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:mybot563@gmail.com", chaves.publicKey, chaves.privateKey);
 
 function chavePublica() { return chaves.publicKey; }
 
