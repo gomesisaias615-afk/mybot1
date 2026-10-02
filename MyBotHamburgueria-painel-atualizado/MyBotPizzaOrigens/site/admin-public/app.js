@@ -2,7 +2,7 @@ const $ = seletor => document.querySelector(seletor);
 const estado = { dados: null, tipoEstoque: "todos", busca: "", filtro: "todos" };
 const portalPainel = window.MYBOT_PORTAL === "atendente" ? "atendente" : "administrador";
 const guiasPermitidas = portalPainel === "atendente" ? ["pedidos", "historico", "estoque", "ajuda"] : ["estoque", "precos", "itens", "ingredientes", "imagens", "adicionais", "horario", "taxa", "ajuda"];
-const ZOOM_INICIAL_PIZZARIA = 15;
+let ZOOM_INICIAL_PIZZARIA = 15;
 
 async function api(url, opcoes = {}) {
   const resposta = await fetch(url, {
@@ -84,6 +84,7 @@ function pedidosDemonstracao() {
   ];
 }
 
+let editandoBaseEnderecos = false;
 async function carregar() {
   if (portalPainel === "atendente") {
     estado.dados = await api("/api/painel/dados");
@@ -122,7 +123,7 @@ function render() {
   $("#diasSemana").innerHTML = Object.entries(nomesDias).map(([dia, nome]) => `<button class="dia-semana ${configuracao.diasFuncionamento[dia] ? "ativo" : ""} ${dia === diaAtual ? "hoje" : ""}" data-dia="${dia}" aria-pressed="${configuracao.diasFuncionamento[dia]}"><span>${nome}</span><small>${configuracao.diasFuncionamento[dia] ? "Ligado" : "Desligado"}</small></button>`).join("");
   if ($("#horarioAbertura")) $("#horarioAbertura").value = configuracao.horarioAbertura || "00:00";
   if ($("#horarioFechamento")) $("#horarioFechamento").value = configuracao.horarioFechamento || "00:00";
-  if ($("#modoTaxaFixa")) {
+  if ($("#modoTaxaFixa") && !editandoBaseEnderecos) {
     const entrega = configuracao.entrega || {};
     $("#modoTaxaFixa").checked = entrega.modoTaxa === "fixa";
     $("#modoTaxaKm").checked = entrega.modoTaxa !== "fixa";
@@ -141,10 +142,14 @@ function render() {
     $("#enderecoPizzaria").value = "";
     $("#latitudePizzaria").value = entrega.latitudePizzaria ?? "";
     $("#longitudePizzaria").value = entrega.longitudePizzaria ?? "";
-    $("#estadoAtendido").value = entrega.estadoAtendido || "SE";
-    $("#cidadeAtendida").value = entrega.cidadeAtendida || "Estância";
+    $("#estadoAtendido").value = entrega.estadoAtendido || "";
+    $("#cidadeAtendida").value = entrega.cidadeAtendida || "";
+    ZOOM_INICIAL_PIZZARIA = Number(entrega.zoomMapaInicial || 15);
+    $("#zoomCentroMapa").value = ZOOM_INICIAL_PIZZARIA;
+    $("#latitudeCentroMapa").value = entrega.latitudeMapaInicial ?? "";
+    $("#longitudeCentroMapa").value = entrega.longitudeMapaInicial ?? "";
     $("#municipioAtendimentoResumo").textContent =
-      (entrega.cidadeAtendida || "Estância") + " — " + (entrega.estadoAtendido || "SE");
+      (entrega.cidadeAtendida || "Município não configurado") + " — " + (entrega.estadoAtendido || "UF");
     // Number(null) vira 0 e abriria o mapa no oceano (0,0).
     const latitudeMapaTexto = String(entrega.latitudeMapaInicial ?? "").trim();
     const longitudeMapaTexto = String(entrega.longitudeMapaInicial ?? "").trim();
@@ -318,7 +323,8 @@ let consultaMapaTimer;
 let centroMapaConfigurado = null;
 function fecharSugestoesLocalPizzaria() {
   clearTimeout(sugestoesLocalTimer);
-  fecharSugestoesLocalPizzaria();
+  $("#sugestoesLocalPizzaria").classList.add("hidden");
+  $("#sugestoesLocalPizzaria").innerHTML = "";
 }
 
 function manterSugestoesLocalPorTresMinutos() {
@@ -389,6 +395,7 @@ function coordenadasPizzariaAtuais() {
     Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
   // Mesmo com endereço já salvo, mantenha o enquadramento inicial escolhido.
   // Antes este trecho forçava 19 e ignorava o zoom configurado.
+  if (centroMapaConfigurado) return { ...centroMapaConfigurado, zoom: ZOOM_INICIAL_PIZZARIA };
   if (possuiCoordenadas) return { latitude, longitude, zoom: ZOOM_INICIAL_PIZZARIA };
   if (centroMapaConfigurado) return { ...centroMapaConfigurado, zoom: ZOOM_INICIAL_PIZZARIA };
   const estado = String($("#estadoAtendido").value || "").toUpperCase();
@@ -565,12 +572,18 @@ async function confirmarLocalPizzaria(latitude, longitude, endereco) {
       entrega: {
         enderecoPizzaria: enderecoNormalizado,
         latitudePizzaria: latitudeNumero,
-        longitudePizzaria: longitudeNumero,
-        distanciaMaximaKm: raioAtualEntrega()
+          longitudePizzaria: longitudeNumero,
+          estadoAtendido: $("#estadoAtendido").value.trim().toUpperCase(),
+          cidadeAtendida: $("#cidadeAtendida").value.trim(),
+          latitudeMapaInicial: $("#latitudeCentroMapa").value ? Number($("#latitudeCentroMapa").value) : null,
+          longitudeMapaInicial: $("#longitudeCentroMapa").value ? Number($("#longitudeCentroMapa").value) : null,
+          zoomMapaInicial: Number($("#zoomCentroMapa").value || 15),
+          distanciaMaximaKm: raioAtualEntrega()
       }
     })
   });
   const entregaSalva = resposta?.entrega || {};
+  editandoBaseEnderecos = false;
   if (
     !String(entregaSalva.enderecoPizzaria || "").trim() ||
     !Number.isFinite(Number(entregaSalva.latitudePizzaria)) ||
@@ -591,59 +604,87 @@ async function confirmarLocalPizzaria(latitude, longitude, endereco) {
   return entregaSalva;
 }
 
-async function buscarEnderecoPizzaria() {
-  const controle = buscaLocalControle;
-  const busca = $("#enderecoPizzaria").value.trim();
-  const cidade = $("#cidadeAtendida").value.trim();
-  const estado = $("#estadoAtendido").value.trim().toUpperCase();
-  const caixa = $("#sugestoesLocalPizzaria");
-  if (busca.length < 2 || !cidade || estado.length !== 2) {
-    caixa.classList.add("hidden");
-    caixa.innerHTML = "";
-    return;
-  }
+const buscaRapidaPainel = MyBotEnderecos.criar({
+  obterArea: () => ({cidade:$("#cidadeAtendida").value.trim(),estado:$("#estadoAtendido").value.trim().toUpperCase()}),
+  renderizar: itens => {
+    const caixa=$("#sugestoesLocalPizzaria");
+    if(!itens.length){caixa.classList.add("hidden");caixa.innerHTML="";return;}
     caixa.classList.remove("hidden");
-  caixa.innerHTML = "<p>Buscando no mapa...</p>";
-  try {
-    const itens = await api("/api/enderecos/sugestoes?q=" + encodeURIComponent(busca) + "&cidade=" + encodeURIComponent(cidade) + "&estado=" + encodeURIComponent(estado) + "&_=" + Date.now());
-    if (controle !== buscaLocalControle) return;
-    if (!itens.length) {
-      caixa.innerHTML = "<p>Nenhum endereço encontrado. Confira cidade, estado e endereço.</p>";
-      return;
-    }
-    caixa.innerHTML = itens.map((item, indice) =>
-      '<button type="button" data-indice="' + indice + '"><strong>' + escapar(item.logradouro || item.rua || "Endereço") + '</strong><small>' + escapar(item.texto || [item.bairro,item.cidade,item.estado].filter(Boolean).join(" — ")) + '</small></button>'
+    caixa.innerHTML=itens.map((item,indice)=>
+      '<button type="button" data-indice="'+indice+'"><strong>'+escapar(item.logradouro || item.rua || "Endereço")+'</strong><small>'+escapar(item.texto || [item.bairro,item.cidade,item.estado].filter(Boolean).join(" — "))+'</small></button>'
     ).join("");
-    sugestoesLocalAbertas = true;
-    sugestoesLocalScrollInicial = window.scrollY;
+    sugestoesLocalAbertas=true;
+    sugestoesLocalScrollInicial=window.scrollY;
     manterSugestoesLocalPorTresMinutos();
-    caixa.querySelectorAll("button").forEach((botao, indice) => botao.addEventListener("click", async () => {
-      const item = itens[indice];
-      const textoOriginal = botao.innerHTML;
+    caixa.querySelectorAll("button").forEach((botao,indice)=>botao.addEventListener("click",async()=>{
+      buscaRapidaPainel.cancelar();
+      const item=itens[indice];
       try {
-        botao.disabled = true;
-        botao.textContent = "Salvando endereço...";
-        await confirmarLocalPizzaria(item.latitude, item.longitude, item.texto);
+        botao.disabled=true;botao.textContent="Salvando endereço...";
+        const endereco=[item.rua,item.bairro,item.cidade,item.estado].filter(Boolean).join(", ");
+        await confirmarLocalPizzaria(item.latitude,item.longitude,endereco);
         fecharSugestoesLocalPizzaria();
-        toast("Endereço da hamburgueria salvo.");
-      } catch (erro) {
-        botao.disabled = false;
-        botao.innerHTML = textoOriginal;
-        toast(erro.message);
-      }
+        toast("Endereço da loja salvo.");
+      }catch(erro){botao.disabled=false;toast(erro.message);}
     }));
-  } catch (erro) {
-    if (controle !== buscaLocalControle) return;
-    caixa.innerHTML = "<p>" + escapar(erro.message) + "</p>";
   }
-}
-
-$("#enderecoPizzaria").addEventListener("input", () => {
-  buscaLocalControle += 1;
-  fecharSugestoesLocalPizzaria();
-  clearTimeout(buscaLocalTimer);
-  buscaLocalTimer = setTimeout(buscarEnderecoPizzaria, 750);
 });
+function buscarEnderecoPizzaria() {
+  return buscaRapidaPainel.buscar($("#enderecoPizzaria").value.trim());
+}
+$("#enderecoPizzaria").addEventListener("input",()=>{
+  buscaLocalControle++;
+  fecharSugestoesLocalPizzaria();
+  buscarEnderecoPizzaria();
+});
+["estadoAtendido","cidadeAtendida"].forEach(id=>$("#"+id).addEventListener("input",()=>{
+  editandoBaseEnderecos = true;
+  buscaRapidaPainel.cancelar();
+  fecharSugestoesLocalPizzaria();
+  centroMapaConfigurado=null;
+  $("#latitudeCentroMapa").value="";
+  $("#longitudeCentroMapa").value="";
+}));
+$("#arquivoBaseEnderecos").addEventListener("change",async()=>{
+    const arquivo=$("#arquivoBaseEnderecos").files[0];
+    editandoBaseEnderecos = true;
+  if(!arquivo || arquivo.size>4*1024*1024)return;
+  try {
+    const dados=JSON.parse(await arquivo.text()),primeiro=(Array.isArray(dados)?dados:dados.enderecos)?.[0] || {};
+    const cidade=dados.cidade || primeiro.cidade || primeiro.municipio;
+    const uf=dados.uf || primeiro.uf || (/^[A-Za-z]{2}$/.test(primeiro.estado || "")?primeiro.estado:"");
+    if(cidade)$("#cidadeAtendida").value=cidade;
+    if(uf)$("#estadoAtendido").value=String(uf).toUpperCase();
+    $("#latitudeCentroMapa").value=dados.mapa?.latitude ?? "";
+    $("#longitudeCentroMapa").value=dados.mapa?.longitude ?? "";
+    $("#zoomCentroMapa").value=dados.mapa?.zoom ?? 15;
+    buscaRapidaPainel.cancelar();
+    $("#statusBaseEnderecos").textContent="Arquivo selecionado. Confira município, UF e zoom e clique em importar.";
+  }catch {$("#statusBaseEnderecos").textContent="Arquivo JSON inválido.";}
+});
+$("#importarBaseEnderecos").addEventListener("click",async()=>{
+  const botao=$("#importarBaseEnderecos"),status=$("#statusBaseEnderecos"),arquivo=$("#arquivoBaseEnderecos").files[0];
+  if(!arquivo)return toast("Escolha o arquivo JSON da cidade.");
+  if(arquivo.size>4*1024*1024)return toast("O arquivo deve ter até 4 MB.");
+  try {
+    botao.disabled=true;status.textContent="Validando e importando a base...";
+    const base=JSON.parse(await arquivo.text());
+    const mapa={zoom:Number($("#zoomCentroMapa").value || 15)};
+    if($("#latitudeCentroMapa").value)mapa.latitude=Number($("#latitudeCentroMapa").value);
+    if($("#longitudeCentroMapa").value)mapa.longitude=Number($("#longitudeCentroMapa").value);
+    const resultado=await api("/api/painel/enderecos/base",{method:"POST",body:JSON.stringify({
+      base,cidade:$("#cidadeAtendida").value.trim(),uf:$("#estadoAtendido").value.trim().toUpperCase(),mapa
+    })});
+    MyBotEnderecos.limpar();buscaRapidaPainel.cancelar();
+    editandoBaseEnderecos = false;
+    await carregar();
+    status.textContent=resultado.total+" endereços importados: "+resultado.cidade+" / "+resultado.uf+
+      (resultado.reconfirmarEndereco?". Confirme novamente o endereço da loja no mapa.":". Base pronta para pesquisa.");
+    await buscaRapidaPainel.precarregar();
+  }catch(erro){status.textContent="Não foi possível importar: "+erro.message;}
+  finally{botao.disabled=false;}
+});
+$("#configBaseEnderecos").classList.toggle("hidden",portalPainel!=="administrador");
 window.addEventListener("scroll", () => {
   if (!sugestoesLocalAbertas) return;
   if (Math.abs(window.scrollY - sugestoesLocalScrollInicial) < window.innerHeight * .75) return;
@@ -831,7 +872,10 @@ $("#salvarEntrega").addEventListener("click", async () => {
     latitudePizzaria: Number($("#latitudePizzaria").value),
     longitudePizzaria: Number($("#longitudePizzaria").value),
     estadoAtendido: $("#estadoAtendido").value.trim().toUpperCase(),
-    cidadeAtendida: $("#cidadeAtendida").value.trim()
+    cidadeAtendida: $("#cidadeAtendida").value.trim(),
+    latitudeMapaInicial: $("#latitudeCentroMapa").value ? Number($("#latitudeCentroMapa").value) : null,
+    longitudeMapaInicial: $("#longitudeCentroMapa").value ? Number($("#longitudeCentroMapa").value) : null,
+    zoomMapaInicial: Number($("#zoomCentroMapa").value || 15)
   };
   if (!entrega.enderecoPizzaria || !entrega.cidadeAtendida || entrega.estadoAtendido.length !== 2) {
     return toast("Confira o endereço, a cidade e o estado atendido.");
@@ -1051,7 +1095,11 @@ function avisarPedidosNovos(pedidos) {
     estado.dados = dadosAtualizados;
     if (pedidosMudaram || estoqueMudou) {
       avisarPedidosNovos(estado.dados.pedidos || []);
+      // Atualizações de pedidos não devem apagar uma cidade/base em edição.
+      const campos = ["estadoAtendido","cidadeAtendida","latitudeCentroMapa","longitudeCentroMapa","zoomCentroMapa","enderecoPizzaria"];
+      const valores = campos.map(id=>$("#"+id)?.value);
       render();
+      if (editandoBaseEnderecos) campos.forEach((id,i)=>{if($("#"+id)) $("#"+id).value=valores[i];});
       aplicarGuia(estado.guia || (portalPainel === "atendente" ? "pedidos" : "estoque"));
     }
   } catch {
@@ -1607,6 +1655,7 @@ function dadosFicha(pedido) {
     `COMPLEMENTO: ${valorInformado(rec.complemento)}`,
     `REFERÊNCIA: ${valorInformado(rec.referencia)}`,
     `CIDADE/CEP: ${valorInformado(rec.cidade)}/${valorInformado(rec.estado)} - ${valorInformado(rec.cep)}`,
+    "ATENÇÃO: As coordenadas do GPS são aproximadas. Confira o endereço, o número e os pontos de referência informados pelo cliente.",
     "",
     `OBSERVAÇÃO: ${valorInformado(pedido.observacaoPizzas, pedido.observacao, rec.observacao)}`,
     `TOTAL: ${moeda(rec.totalFinal ?? pedido.total)}`
@@ -1643,7 +1692,8 @@ function rotaDoMotoboy(pedido) {
 function textoRotaMotoboy(pedido, rota) {
   return "🛵 Rota de entrega do pedido #" + pedido.id +
     "\nAbra no Google Maps para seguir a rota sugerida:" +
-    "\n" + rota;
+    "\n" + rota +
+    "\n\nAtenção: as coordenadas do GPS são aproximadas. Confira o endereço, o número e os pontos de referência informados pelo cliente.";
 }
 
 async function criarFichaMotoboy(pedido) {

@@ -349,6 +349,8 @@ router.use("/api/painel", autenticarPerfil, (req, res, next) => {
   next();
 });
 
+require("./enderecos-geral").registrarAdmin(router);
+
 // Cria um link temporário, compartilhável apenas por quem o recebeu, para a
 // imagem da ficha. Isso permite encaminhar a ficha no WhatsApp Web sem anexar
 // arquivos manualmente.

@@ -73,8 +73,9 @@ const estadosBrasil = [
 
 function montarEstados() {
   $("estadoEntrega").innerHTML = estadosBrasil.map(([sigla,nome]) => `<option value="${sigla}">${nome}</option>`).join("");
-  $("estadoEntrega").value = configuracaoEntrega.estadoAtendido || "SE";
-  $("cidadeEntrega").value = configuracaoEntrega.cidadeAtendida || "Estância";
+  $("estadoEntrega").value = configuracaoEntrega.estadoAtendido || "";
+  $("cidadeEntrega").value = configuracaoEntrega.cidadeAtendida || "";
+  buscaRapidaCheckout.precarregar();
 }
 
 function atualizarMensagemTaxaEntregaInicial() {
@@ -99,6 +100,7 @@ function manterSugestoesEnderecoPorTresMinutos() {
 }
 
 function selecionarSugestaoEndereco(item) {
+  buscaRapidaCheckout.cancelar();
   preencherEnderecoLocalizado(item);
   esconderSugestoes();
   $("statusLocalizacao").classList.remove("error");
@@ -106,37 +108,32 @@ function selecionarSugestaoEndereco(item) {
   $("numero").focus();
 }
 
-async function buscarSugestoesEndereco() {
-  const rua = $("rua").value.trim();
-  const bairro = $("bairro").value.trim();
-  const cidade = $("cidadeEntrega").value.trim();
-  const estado = $("estadoEntrega").value;
-  if (!estado || !cidade || Math.max(rua.length,bairro.length) < 2) return esconderSugestoes();
-  const controle = ++buscaEnderecoControle;
-  try {
-    const itens = await json(`/api/enderecos/sugestoes?q=${encodeURIComponent([rua,bairro].filter(Boolean).join(" "))}&cidade=${encodeURIComponent(cidade)}&estado=${encodeURIComponent(estado)}`);
-    if (controle !== buscaEnderecoControle) return;
+const buscaRapidaCheckout = MyBotEnderecos.criar({
+  obterArea: () => ({ cidade: $("cidadeEntrega").value.trim(), estado: $("estadoEntrega").value }),
+  renderizar: itens => {
     $("sugestoesEndereco").innerHTML = itens.map((item,indice) =>
-      `<button type="button" role="option" data-indice="${indice}"><strong>${item.logradouro || item.rua || "Endereço"}</strong><small>${item.texto || [item.bairro,item.cidade,item.estado].filter(Boolean).join(" — ")}</small></button>`
+      '<button type="button" role="option" data-indice="'+indice+'"><strong>'+escaparEndereco(item.logradouro || item.rua || "Endereço")+'</strong><small>'+escaparEndereco(item.texto || [item.bairro,item.cidade,item.estado].filter(Boolean).join(" — "))+'</small></button>'
     ).join("");
-    if (!itens.length) return esconderSugestoes();
+    if(!itens.length)return esconderSugestoes();
     $("sugestoesEndereco").classList.remove("hidden");
-    sugestoesEnderecoAbertas = true;
-    sugestoesEnderecoScrollInicial = window.scrollY;
+    sugestoesEnderecoAbertas=true;
+    sugestoesEnderecoScrollInicial=window.scrollY;
     manterSugestoesEnderecoPorTresMinutos();
-    $("sugestoesEndereco").querySelectorAll("button").forEach((botao,indice) => {
-      botao.addEventListener("click", () => selecionarSugestaoEndereco(itens[indice]));
+    $("sugestoesEndereco").querySelectorAll("button").forEach((botao,indice)=>{
+      botao.addEventListener("click",()=>{buscaRapidaCheckout.cancelar();selecionarSugestaoEndereco(itens[indice]);});
     });
-  } catch {
-    esconderSugestoes();
   }
+});
+function escaparEndereco(texto) {
+  return String(texto || "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 }
-
-["rua","bairro"].forEach(id => $(id).addEventListener("input", () => {
-  enderecoSelecionado = {};
+function buscarSugestoesEndereco() {
+  return buscaRapidaCheckout.buscar($("rua").value.trim() || $("bairro").value.trim());
+}
+["rua","bairro"].forEach(id=>$(id).addEventListener("input",()=>{
+  enderecoSelecionado={};
   esconderSugestoes();
-  clearTimeout(buscaEnderecoTimer);
-  buscaEnderecoTimer = setTimeout(buscarSugestoesEndereco, 750);
+  buscarSugestoesEndereco();
 }));
 
 function buscarSugestoesAoVoltarParaRua() {
@@ -145,6 +142,7 @@ function buscarSugestoesAoVoltarParaRua() {
   if (Math.max(rua.length, bairro.length) >= 2) buscarSugestoesEndereco();
 }
 $("rua").addEventListener("focus", buscarSugestoesAoVoltarParaRua);["estadoEntrega","cidadeEntrega"].forEach(id => $(id).addEventListener("change", () => {
+  buscaRapidaCheckout.cancelar();
   enderecoSelecionado = {};
   esconderSugestoes();
 }));
@@ -184,7 +182,7 @@ function fecharMapaLocalizacao() {
 function atualizarPontoMapa(latitude, longitude, centralizar = false) {
   coordenadasMapa = { latitude, longitude };
   marcadorLocalizacao.setLatLng([latitude, longitude]);
-  if (centralizar) mapaLocalizacao.setView([latitude, longitude], Math.max(mapaLocalizacao.getZoom(), 18));
+  if (centralizar) mapaLocalizacao.setView([latitude, longitude], Number(configuracaoEntrega.zoomMapaInicial || 15));
   enderecoMapa = null;
   $("statusMapa").textContent = "Novo ponto selecionado. Confirme para buscar o endereço.";
 }
@@ -236,7 +234,7 @@ async function abrirMapaLocalizacao(latitude, longitude) {
     });
   }
 
-  mapaLocalizacao.setView([latitude, longitude], 18);
+  mapaLocalizacao.setView([latitude, longitude], Number(configuracaoEntrega.zoomMapaInicial || 15));
   marcadorLocalizacao.setLatLng([latitude, longitude]);
   setTimeout(() => mapaLocalizacao.invalidateSize(), 80);
 
@@ -520,6 +518,7 @@ $("formEndereco").addEventListener("submit", async event => {
         cep: $("cep").value,
         complemento: $("complemento").value,
         referencia: $("referencia").value,
+        placeId: enderecoSelecionado.placeId,
         horario: $("horario").value,
         quantidadePessoas: $("quantidadePessoas").value,
         latitude: enderecoSelecionado.latitude,

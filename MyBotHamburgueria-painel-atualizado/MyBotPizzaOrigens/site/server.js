@@ -5,6 +5,7 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
+const enderecosGerais = require("./enderecos-geral");
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 const { webhookUrlMercadoPago, publicKeyMercadoPago } = require("../config/pagamento");
 const { validarAcesso } = require("../services/painelEstoqueAuth.service");
@@ -158,9 +159,9 @@ function enderecoDoNominatim(dados) {
 }
 
 function enderecoNaArea(endereco, config = configuracaoEntrega()) {
-  const cidadeOk = normalizar(endereco.cidade).includes(normalizar(config.cidadeAtendida));
+  const cidadeOk = normalizar(endereco.cidade) === normalizar(config.cidadeAtendida);
   const estadoInformado = normalizar(endereco.estado);
-  const estadoOk = !estadoInformado || estadoInformado === normalizar(config.estadoAtendido) || estadoInformado.includes("sergipe");
+  const estadoOk = estadoInformado === normalizar(config.estadoAtendido);
   return cidadeOk && estadoOk;
 }
 
@@ -230,6 +231,7 @@ function formatarCep(cep) {
 
 app.use(cors());
 app.use(express.json({ limit: "3mb" }));
+enderecosGerais.registrarPublico(app, configuracaoEntrega);
 
 const cacheTilesMapa = new Map();
 const LIMITE_CACHE_TILES = 500;
@@ -512,88 +514,6 @@ function consultasAlternativasDeLogradouro(busca) {
   return [...new Set(alternativas.map(item => item.trim()).filter(Boolean))];
 }
 
-app.get("/api/enderecos/sugestoes", async (req, res) => {
-  const buscaOriginal = String(req.query.q || "").trim();
-  const busca = expandirAbreviacoesEndereco(buscaOriginal);
-  const config = configuracaoEntrega();
-  const cidade = String(req.query.cidade || config.cidadeAtendida).trim();
-  const estado = String(req.query.estado || config.estadoAtendido).trim().toUpperCase();
-  if (buscaOriginal.length < 2 || !cidade || !estado) return res.json([]);
-  const areaConsultada = {
-    ...config,
-    cidadeAtendida: cidade,
-    estadoAtendido: estado
-  };
-
-  try {
-    let resultados = [];
-    for (const consulta of consultasAlternativasDeLogradouro(busca)) {
-      const url = new URL("https://nominatim.openstreetmap.org/search");
-      url.searchParams.set("q", `${consulta}, ${cidade}, ${estado}, Brasil`);
-      url.searchParams.set("format", "jsonv2");
-      url.searchParams.set("addressdetails", "1");
-      url.searchParams.set("countrycodes", "br");
-      url.searchParams.set("limit", "8");
-      const dados = await consultarNominatim(url);
-      resultados = dados.map(enderecoDoNominatim).filter(item =>
-        enderecoNaArea(item, areaConsultada) &&
-        Number.isFinite(item.latitude) &&
-        Number.isFinite(item.longitude)
-      );
-      if (resultados.length) break;
-    }
-    res.set("Cache-Control", "private, max-age=300");
-    return res.json(resultados);
-  } catch (erro) {
-    console.error("Erro na busca do OpenStreetMap:", erro.message);
-    if (normalizar(cidade) !== "estancia" || estado !== "SE") {
-      return res.status(503).json({ erro: "O mapa não conseguiu pesquisar este endereço agora. Tente novamente." });
-    }
-    const termos = normalizar(busca).split(" ").filter(Boolean);
-    const resultados = lerJson(catalogoEnderecosPath, [])
-      .filter(item => {
-        const alvo = normalizar(expandirAbreviacoesEndereco(`${item.logradouro} ${item.chaveBusca} ${item.bairro}`));
-        return termos.every(termo => alvo.includes(termo));
-      })
-      .slice(0, 8)
-      .map(item => ({
-        placeId: item.id,
-        texto: `${item.logradouro} — ${item.bairro}, Estância - SE`,
-        rua: item.logradouro,
-        logradouro: item.logradouro,
-        bairro: item.bairro,
-        cidade: "Estância",
-        estado: "SE",
-        cep: "",
-        latitude: item.latitude,
-        longitude: item.longitude
-      }));
-    return res.json(resultados);
-  }
-});
-
-app.get("/api/enderecos/local/:placeId", async (req, res) => {
-  const catalogo = lerJson(catalogoEnderecosPath, []);
-  const endereco = catalogo.find(item => item.id === req.params.placeId);
-
-  if (!endereco) {
-    return res.status(404).json({ erro: "Endereço não encontrado." });
-  }
-
-  res.json({
-    rua: endereco.logradouro,
-    numero: "",
-    bairro: endereco.bairro,
-    cidade: modalidade === "entrega" ? cidade : configEntrega.cidadeAtendida,
-    estado: modalidade === "entrega" ? estado : configEntrega.estadoAtendido,
-    cep: "",
-    enderecoFormatado:
-      `${endereco.logradouro}, ${endereco.bairro}, Estância - SE`,
-    latitude: endereco.latitude,
-    longitude: endereco.longitude,
-    nomeAmbiguo: endereco.nomeAmbiguo
-  });
-});
 
 app.get("/api/enderecos/localizacao-atual", async (req, res) => {
   const latitude = Number(req.query.lat);
@@ -602,6 +522,9 @@ app.get("/api/enderecos/localizacao-atual", async (req, res) => {
     return res.status(400).json({ erro: "Coordenadas inválidas." });
   }
 
+  const areaLocal = configuracaoEntrega();
+  const pontoLocal = enderecosGerais.maisProximo(latitude, longitude, areaLocal.cidadeAtendida, areaLocal.estadoAtendido);
+  if (pontoLocal) return res.set("Cache-Control", "no-store").json(pontoLocal);
   try {
     const url = new URL("https://nominatim.openstreetmap.org/reverse");
     url.searchParams.set("lat", String(latitude));
@@ -625,6 +548,11 @@ app.post("/api/enderecos/calcular-entrega", async (req, res) => {
   try {
     const latitude = Number(req.body?.latitude);
     const longitude = Number(req.body?.longitude);
+    if (req.body?.latitude == null || req.body?.longitude == null || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180)
+      return res.status(400).json({ erro: "Coordenadas inválidas." });
+    const areaLocal = configuracaoEntrega();
+    const pontoLocal = enderecosGerais.maisProximo(latitude, longitude, areaLocal.cidadeAtendida, areaLocal.estadoAtendido);
+    if (pontoLocal) return res.json(await calcularTaxaEntrega(latitude, longitude));
     const url = new URL("https://nominatim.openstreetmap.org/reverse");
     url.searchParams.set("lat", String(latitude));
     url.searchParams.set("lon", String(longitude));
@@ -754,7 +682,7 @@ app.post("/api/pedido/:pedidoId/endereco", async (req, res) => {
   }
 
   const bairro = modalidade === "entrega"
-    ? (bairroOficial(endereco.bairro) || String(endereco.bairro || "").trim())
+    ? String(endereco.bairro || "").trim()
     : "";
   const cidade = modalidade === "entrega" ? String(endereco.cidade || "").trim() : "";
   const estado = modalidade === "entrega" ? String(endereco.estado || "").trim().toUpperCase() : "";
@@ -822,13 +750,21 @@ app.post("/api/pedido/:pedidoId/endereco", async (req, res) => {
   }
 
   let calculoEntrega = { modoTaxa: null, distanciaKm: null, taxaEntrega: 0 };
-  let latitudeEntrega = Number(endereco.latitude);
-  let longitudeEntrega = Number(endereco.longitude);
+  let latitudeEntrega = endereco.latitude == null || endereco.latitude === "" ? NaN : Number(endereco.latitude);
+  let longitudeEntrega = endereco.longitude == null || endereco.longitude === "" ? NaN : Number(endereco.longitude);
 
   if (modalidade === "entrega") {
     try {
       let localizado;
-      if (Number.isFinite(latitudeEntrega) && Number.isFinite(longitudeEntrega)) {
+      const cadastrado = enderecosGerais.resolverLocal(endereco.rua, bairro, cidade, estado)
+        || enderecosGerais.resolverExterno(endereco.placeId, endereco.rua, bairro, cidade, estado);
+      if (cadastrado) {
+        localizado = cadastrado;
+        latitudeEntrega = cadastrado.latitude;
+        longitudeEntrega = cadastrado.longitude;
+      } else if (String(endereco.placeId || "").startsWith("geoapify:")) {
+        throw new Error("Selecione novamente a sugestão para confirmar a localização.");
+      } else if (Number.isFinite(latitudeEntrega) && Number.isFinite(longitudeEntrega)) {
         const url = new URL("https://nominatim.openstreetmap.org/reverse");
         url.searchParams.set("lat", String(latitudeEntrega));
         url.searchParams.set("lon", String(longitudeEntrega));
@@ -885,8 +821,8 @@ app.post("/api/pedido/:pedidoId/endereco", async (req, res) => {
       ? (tipoResidencia === "casa" ? "Casa" : "Apartamento")
       : "Não se aplica",
     referencia: String(endereco.referencia || "Sem referência").trim(),
-    cidade: "Estância",
-    estado: "SE",
+    cidade: modalidade === "entrega" ? cidade : configEntrega.cidadeAtendida,
+    estado: modalidade === "entrega" ? estado : configEntrega.estadoAtendido,
     cep: modalidade === "entrega" ? formatarCep(cep) : "Não se aplica",
     valorPedido: totais.valorPedido,
     taxaEntrega: totais.taxaEntrega,

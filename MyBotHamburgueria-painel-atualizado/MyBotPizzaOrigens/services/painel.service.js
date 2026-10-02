@@ -6,11 +6,11 @@ const configuracaoPath = garantirArquivo("painel.json", "data/painel.json", {});
 
 // Para preparar o bot para outra empresa, altere somente este bloco.
 const LOCALIDADE_EMPRESA = Object.freeze({
-  estado: "SE",
-  municipio: "Estância",
+  estado: String(process.env.ESTADO_ATENDIDO || "").trim().toUpperCase(),
+  municipio: String(process.env.CIDADE_ATENDIDA || "").trim(),
   // Centro inicial da cidade; o endereço exato é escolhido no painel.
-  latitudeMapaInicial: -11.2659,
-  longitudeMapaInicial: -37.4484,
+  latitudeMapaInicial: null,
+  longitudeMapaInicial: null,
   zoomMapaInicial: 15
 });
 
@@ -85,12 +85,12 @@ function normalizarConfiguracaoEntrega(valor = {}) {
     latitudePizzaria: coordenadaEntrega(valor.latitudePizzaria, base.latitudePizzaria, -90, 90),
     longitudePizzaria: coordenadaEntrega(valor.longitudePizzaria, base.longitudePizzaria, -180, 180),
     // Estado e município são definidos na implantação, não pelo atendente.
-    estadoAtendido: base.estadoAtendido,
-    cidadeAtendida: base.cidadeAtendida,
+    estadoAtendido: String(valor.estadoAtendido || base.estadoAtendido).trim().toUpperCase(),
+    cidadeAtendida: String(valor.cidadeAtendida || base.cidadeAtendida).trim(),
     latitudeMapaInicial: coordenadaEntrega(valor.latitudeMapaInicial, base.latitudeMapaInicial, -90, 90),
     longitudeMapaInicial: coordenadaEntrega(valor.longitudeMapaInicial, base.longitudeMapaInicial, -180, 180),
     // Evita que um zoom antigo salvo no painel substitua o padrão da cidade.
-    zoomMapaInicial: base.zoomMapaInicial
+    zoomMapaInicial: Math.min(19, Math.max(1, Math.round(numeroEntrega(valor.zoomMapaInicial, base.zoomMapaInicial, 1))))
   };
 }
 
