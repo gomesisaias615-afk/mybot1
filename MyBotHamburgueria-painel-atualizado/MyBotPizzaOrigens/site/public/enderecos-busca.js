@@ -27,8 +27,8 @@
     })).slice(0,8):[];
   }
   function criar({obterArea,renderizar}) {
-    let versao=0,timer,controlador;
-    function cancelar(){versao++;clearTimeout(timer);controlador?.abort();}
+    let versao=0,timer,controlador,emAndamento=false;
+    function cancelar(){versao++;clearTimeout(timer);controlador?.abort();emAndamento=false;}
     async function buscar(busca) {
       cancelar();
       const atual=versao,area=obterArea();
@@ -38,16 +38,19 @@
       renderizar(locais);
       if(busca.trim().length<3)return;
       timer=setTimeout(async()=>{
+        if(atual!==versao)return;
         controlador=new AbortController();
+        emAndamento=true;
         try {
           const resposta=await fetch("/api/enderecos/sugestoes?q="+encodeURIComponent(busca)+"&"+areaUrl(area),{signal:controlador.signal,cache:"no-store"});
           if(!resposta.ok)throw new Error("Busca externa indisponível");
           const itens=await resposta.json();
           if(atual===versao && Array.isArray(itens))renderizar(itens.length?itens:locais);
         }catch{/* Resultados locais permanecem disponíveis. */}
-      },600);
+        finally {if(atual===versao)emAndamento=false;}
+      },250);
     }
-    return {buscar,cancelar,precarregar:()=>carregar(obterArea())};
+    return {buscar,cancelar,ocupada:()=>emAndamento,precarregar:()=>carregar(obterArea())};
   }
   window.MyBotEnderecos={criar,chave,filtrar,limpar:()=>memoria.clear()};
 })();

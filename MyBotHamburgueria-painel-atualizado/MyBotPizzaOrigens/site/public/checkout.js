@@ -14,6 +14,9 @@ let buscaEnderecoTimer;
 let sugestoesEnderecoTimer;
 let sugestoesEnderecoAbertas = false;
 let sugestoesEnderecoScrollInicial = 0;
+let sugestoesEnderecoItens = [];
+let primeiraSugestaoAte = 0;
+let buscaPersistenteTimer;
 let buscaEnderecoControle = 0;
 let pixTimerId;
 let enderecoSelecionado = {};
@@ -89,6 +92,9 @@ function atualizarMensagemTaxaEntregaInicial() {
 
 function esconderSugestoes() {
   clearTimeout(sugestoesEnderecoTimer);
+  clearTimeout(buscaPersistenteTimer);
+  primeiraSugestaoAte = 0;
+  sugestoesEnderecoItens = [];
   $("sugestoesEndereco").classList.add("hidden");
   $("sugestoesEndereco").innerHTML = "";
   sugestoesEnderecoAbertas = false;
@@ -111,14 +117,25 @@ function selecionarSugestaoEndereco(item) {
 const buscaRapidaCheckout = MyBotEnderecos.criar({
   obterArea: () => ({ cidade: $("cidadeEntrega").value.trim(), estado: $("estadoEntrega").value }),
   renderizar: itens => {
+    if(primeiraSugestaoAte) {
+      if(Date.now()>=primeiraSugestaoAte)return encerrarBuscaPersistente();
+      itens=(sugestoesEnderecoItens.length?sugestoesEnderecoItens:itens).slice(0,1);
+    }
+    sugestoesEnderecoItens=itens;
     $("sugestoesEndereco").innerHTML = itens.map((item,indice) =>
       '<button type="button" role="option" data-indice="'+indice+'"><strong>'+escaparEndereco(item.logradouro || item.rua || "Endereço")+'</strong><small>'+escaparEndereco(item.texto || [item.bairro,item.cidade,item.estado].filter(Boolean).join(" — "))+'</small></button>'
     ).join("");
-    if(!itens.length)return esconderSugestoes();
+    if(!itens.length) {
+      if(!primeiraSugestaoAte)return esconderSugestoes();
+      $("sugestoesEndereco").classList.add("hidden");
+      sugestoesEnderecoAbertas=false;
+      return;
+    }
     $("sugestoesEndereco").classList.remove("hidden");
     sugestoesEnderecoAbertas=true;
     sugestoesEnderecoScrollInicial=window.scrollY;
-    manterSugestoesEnderecoPorTresMinutos();
+    if(!primeiraSugestaoAte)manterSugestoesEnderecoPorTresMinutos();
+    else clearTimeout(buscaPersistenteTimer);
     $("sugestoesEndereco").querySelectorAll("button").forEach((botao,indice)=>{
       botao.addEventListener("click",()=>{buscaRapidaCheckout.cancelar();selecionarSugestaoEndereco(itens[indice]);});
     });
@@ -137,6 +154,9 @@ function buscarSugestoesEndereco() {
 }));
 
 function buscarSugestoesAoVoltarParaRua() {
+  clearTimeout(buscaPersistenteTimer);
+  clearTimeout(sugestoesEnderecoTimer);
+  primeiraSugestaoAte=0;
   const rua = $("rua").value.trim();
   const bairro = $("bairro").value.trim();
   if (Math.max(rua.length, bairro.length) >= 2) buscarSugestoesEndereco();
@@ -146,10 +166,32 @@ $("rua").addEventListener("focus", buscarSugestoesAoVoltarParaRua);["estadoEntre
   enderecoSelecionado = {};
   esconderSugestoes();
 }));
-document.addEventListener("click", evento => {
-  if (!evento.target.closest("#sugestoesEndereco") && !evento.target.closest("#rua") && !evento.target.closest("#bairro")) esconderSugestoes();
-});
+function encerrarBuscaPersistente() {
+  buscaRapidaCheckout.cancelar();
+  esconderSugestoes();
+}
+function tentarSugestaoPersistente() {
+  if(!primeiraSugestaoAte || Date.now()>=primeiraSugestaoAte || sugestoesEnderecoItens.length)return;
+  if(!buscaRapidaCheckout.ocupada())buscarSugestoesEndereco();
+  buscaPersistenteTimer=setTimeout(tentarSugestaoPersistente,5000);
+}
+function manterPrimeiraSugestaoAoSair(evento) {
+  if(evento.target.closest("#sugestoesEndereco, #rua, #bairro"))return;
+  if(primeiraSugestaoAte || enderecoSelecionado.rua || modalidadeSelecionada!=="entrega")return;
+  const busca=$("rua").value.trim() || $("bairro").value.trim();
+  if(busca.length<3 || !$("cidadeEntrega").value.trim() || !$("estadoEntrega").value)return;
+  primeiraSugestaoAte=Date.now()+60000;
+  clearTimeout(sugestoesEnderecoTimer);
+  sugestoesEnderecoTimer=setTimeout(encerrarBuscaPersistente,60000);
+  if(sugestoesEnderecoItens.length) {
+    $("sugestoesEndereco").querySelectorAll("button").forEach((botao,indice)=>{if(indice>0)botao.remove();});
+    sugestoesEnderecoItens=sugestoesEnderecoItens.slice(0,1);
+  } else tentarSugestaoPersistente();
+}
+document.addEventListener("click",manterPrimeiraSugestaoAoSair);
+document.addEventListener("focusin",manterPrimeiraSugestaoAoSair);
 window.addEventListener("scroll", () => {
+  if(primeiraSugestaoAte)return;
   if (!sugestoesEnderecoAbertas) return;
   if (Math.abs(window.scrollY - sugestoesEnderecoScrollInicial) < window.innerHeight * .75) return;
   esconderSugestoes();

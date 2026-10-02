@@ -4,6 +4,27 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
+test("busca ao mudar de campo tenta sem resultados e termina em um minuto", () => {
+  const fonte=fs.readFileSync(path.join(__dirname,"public/checkout.js"),"utf8");
+  const nomes=["encerrarBuscaPersistente","tentarSugestaoPersistente","manterPrimeiraSugestaoAoSair"];
+  const trechos=nomes.map(nome=>fonte.match(new RegExp("function "+nome+"\\([^]*?\\n\\}"))[0]).join("\n");
+  const timers=[];
+  let buscas=0,cancelamentos=0;
+  const campos={rua:{value:"Rua Nova"},bairro:{value:"Centro"},cidadeEntrega:{value:"Aracaju"},estadoEntrega:{value:"SE"}};
+  const contexto={primeiraSugestaoAte:0,enderecoSelecionado:{},modalidadeSelecionada:"entrega",sugestoesEnderecoItens:[],
+    sugestoesEnderecoTimer:null,buscaPersistenteTimer:null,Date:{now:()=>1000},
+    $:id=>campos[id],clearTimeout:()=>{},setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length;},
+    buscaRapidaCheckout:{ocupada:()=>false,cancelar:()=>cancelamentos++},
+    buscarSugestoesEndereco:()=>buscas++,esconderSugestoes:()=>{contexto.primeiraSugestaoAte=0;}};
+  vm.createContext(contexto);vm.runInContext(trechos,contexto);
+  contexto.manterPrimeiraSugestaoAoSair({target:{closest:()=>null}});
+  assert.equal(buscas,1);assert.equal(contexto.primeiraSugestaoAte,61000);
+  assert.ok(timers.some(t=>t.ms===5000));
+  timers.find(t=>t.ms===60000).fn();
+  assert.equal(cancelamentos,1);assert.equal(contexto.primeiraSugestaoAte,0);
+  contexto.tentarSugestaoPersistente();assert.equal(buscas,1);
+});
+
 test("painel fecha sugestões sem recursão", () => {
   const fonte = fs.readFileSync(path.join(__dirname, "admin-public", "app.js"), "utf8");
   const trecho = fonte.match(/function fecharSugestoesLocalPizzaria\(\) \{[\s\S]*?\n\}/)?.[0];
@@ -95,7 +116,7 @@ test("navegador renderiza locais antes do serviço externo e cancela busca antig
   const motor=contexto.window.MyBotEnderecos.criar({obterArea:()=>({cidade:"Aracaju",estado:"SE"}),renderizar:itens=>renders.push(itens)});
   await motor.buscar("dr jose");
   assert.equal(chamadas,1);assert.equal(renders.at(-1)[0].rua,"RUA DOUTOR JOSE");
-  assert.equal(filas[0].ms,600);
+  assert.equal(filas[0].ms,250);
   motor.cancelar();await filas[0].fn();
   // Mesmo que um timer já despachado conclua, não deve substituir a escolha.
   assert.equal(renders.length,1);
