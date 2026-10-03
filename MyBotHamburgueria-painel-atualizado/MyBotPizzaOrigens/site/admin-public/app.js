@@ -1468,6 +1468,7 @@ renderPedidos = function renderPedidosEmGuias() {
         ${!entrega ? `<div class="detalhe"><span>HORÁRIO</span><strong>${escapar(formatarHorario(rec.horario))}</strong></div>` : ""}
         <div class="detalhe largo"><span>${entrega ? "ENDEREÇO" : "RECEBIMENTO"}</span><strong>${escapar(localRecebimento)}</strong></div>
         ${entrega ? `<div class="detalhe"><span>COMPLEMENTO</span><strong>${escapar(valorInformado(rec.complemento))}</strong></div><div class="detalhe"><span>REFERÊNCIA</span><strong>${escapar(valorInformado(rec.referencia))}</strong></div><div class="detalhe"><span>CEP</span><strong>${escapar(valorInformado(rec.cep))}</strong></div><div class="detalhe"><span>TAXA DE ENTREGA</span><strong>${moeda(rec.taxaEntrega)}</strong></div>` : ""}
+        ${entrega && String(rec.observacaoEntrega || "").trim() ? `<div class="detalhe largo"><span>OBSERVAÇÃO PARA O ENTREGADOR</span><strong>${escapar(rec.observacaoEntrega)}</strong></div>` : ""}
         ${modalidade === "salao" ? `<div class="detalhe"><span>PESSOAS</span><strong>${escapar(rec.quantidadePessoas || 1)}</strong></div>` : ""}
         <div class="detalhe largo pagamento-detalhe">
           <div class="pagamento-cabecalho"><span>PAGAMENTO</span><b class="pagamento-status ${pagamento.statusClasse}">${escapar(pagamento.statusTexto)}</b></div>
@@ -1612,6 +1613,7 @@ function renderHistorico() {
         ${!entrega ? `<div class="detalhe"><span>HORÁRIO</span><strong>${escapar(formatarHorario(rec.horario))}</strong></div>` : ""}
         <div class="detalhe largo"><span>${entrega ? "ENDEREÇO" : "RECEBIMENTO"}</span><strong>${escapar(recebimento)}</strong></div>
         ${entrega ? `<div class="detalhe"><span>COMPLEMENTO</span><strong>${escapar(valorInformado(rec.complemento))}</strong></div><div class="detalhe"><span>REFERÊNCIA</span><strong>${escapar(valorInformado(rec.referencia))}</strong></div><div class="detalhe"><span>CEP</span><strong>${escapar(valorInformado(rec.cep))}</strong></div><div class="detalhe"><span>TAXA DE ENTREGA</span><strong>${moeda(rec.taxaEntrega)}</strong></div>` : ""}
+        ${entrega && String(rec.observacaoEntrega || "").trim() ? `<div class="detalhe largo"><span>OBSERVAÇÃO PARA O ENTREGADOR</span><strong>${escapar(rec.observacaoEntrega)}</strong></div>` : ""}
         ${modalidade === "salao" ? `<div class="detalhe"><span>PESSOAS</span><strong>${escapar(rec.quantidadePessoas || 1)}</strong></div>` : ""}
         <div class="detalhe largo pagamento-detalhe">
           <div class="pagamento-cabecalho"><span>PAGAMENTO</span><b class="pagamento-status ${pagamento.statusClasse}">${escapar(pagamento.statusTexto)}</b></div>
@@ -1654,6 +1656,7 @@ function dadosFicha(pedido) {
     `ENDEREÇO: ${valorInformado(rec.rua)}, ${numeroEndereco(rec)} - ${valorInformado(rec.bairro)}`,
     `COMPLEMENTO: ${valorInformado(rec.complemento)}`,
     `REFERÊNCIA: ${valorInformado(rec.referencia)}`,
+    ...(String(rec.observacaoEntrega || "").trim() ? [`OBSERVAÇÃO PARA O ENTREGADOR: ${rec.observacaoEntrega}`] : []),
     `CIDADE/CEP: ${valorInformado(rec.cidade)}/${valorInformado(rec.estado)} - ${valorInformado(rec.cep)}`,
     "ATENÇÃO: As coordenadas do GPS são aproximadas. Confira o endereço, o número e os pontos de referência informados pelo cliente.",
     "",

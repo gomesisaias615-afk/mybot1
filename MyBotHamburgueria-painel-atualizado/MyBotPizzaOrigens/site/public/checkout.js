@@ -145,9 +145,9 @@ function escaparEndereco(texto) {
   return String(texto || "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 }
 function buscarSugestoesEndereco() {
-  return buscaRapidaCheckout.buscar($("rua").value.trim() || $("bairro").value.trim());
+  return buscaRapidaCheckout.buscar($("rua").value.trim());
 }
-["rua","bairro"].forEach(id=>$(id).addEventListener("input",()=>{
+["rua"].forEach(id=>$(id).addEventListener("input",()=>{
   enderecoSelecionado={};
   esconderSugestoes();
   buscarSugestoesEndereco();
@@ -176,9 +176,9 @@ function tentarSugestaoPersistente() {
   buscaPersistenteTimer=setTimeout(tentarSugestaoPersistente,5000);
 }
 function manterPrimeiraSugestaoAoSair(evento) {
-  if(evento.target.closest("#sugestoesEndereco, #rua, #bairro"))return;
+  if(evento.target.closest("#sugestoesEndereco, #rua"))return;
   if(primeiraSugestaoAte || enderecoSelecionado.rua || modalidadeSelecionada!=="entrega")return;
-  const busca=$("rua").value.trim() || $("bairro").value.trim();
+  const busca=$("rua").value.trim();
   if(busca.length<3 || !$("cidadeEntrega").value.trim() || !$("estadoEntrega").value)return;
   primeiraSugestaoAte=Date.now()+60000;
   clearTimeout(sugestoesEnderecoTimer);
@@ -560,6 +560,7 @@ $("formEndereco").addEventListener("submit", async event => {
         cep: $("cep").value,
         complemento: $("complemento").value,
         referencia: $("referencia").value,
+        observacaoEntrega: $("observacaoEntrega").value,
         placeId: enderecoSelecionado.placeId,
         horario: $("horario").value,
         quantidadePessoas: $("quantidadePessoas").value,
@@ -793,6 +794,10 @@ btnVoltar.addEventListener("click", async () => {
   }
 });
 
+const buscaBairros = MyBotBairros.iniciar({
+  obterArea:()=>({cidade:$("cidadeEntrega").value.trim(),estado:$("estadoEntrega").value}),
+  alterado:()=>{enderecoSelecionado={};}
+});
 async function iniciar() {
   try {
     if (!pedidoId || !checkoutToken || !checkoutExpires) {

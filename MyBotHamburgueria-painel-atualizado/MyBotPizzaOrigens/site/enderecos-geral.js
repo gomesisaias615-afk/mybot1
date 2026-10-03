@@ -135,6 +135,15 @@ function resolverExterno(placeId,rua,bairro,cidade,uf) {
   return normalizar(item.cidade)===normalizar(cidade) && item.uf===uf && chave(item.rua)===chave(rua) &&
     (!item.bairro || chave(item.bairro)===chave(bairro))?item:null;
 }
+async function validarExterno(rua,bairro,cidade,uf,cep,config={},buscar=buscarExterno) {
+  const itens=await buscar(rua,cidade,uf,config);
+  const candidatos=itens.filter(item=>chave(item.rua)===chave(rua) && chave(item.bairro)===chave(bairro) &&
+    normalizar(item.cidade)===normalizar(cidade) && item.uf===uf &&
+    Math.abs(item.latitude)<=90 && Math.abs(item.longitude)<=180 &&
+    (!/^\d{8}$/.test(item.cep || "") || item.cep===String(cep || "").replace(/\D/g,"")));
+  const unicos=[...new Map(candidatos.map(item=>[item.latitude+","+item.longitude,item])).values()];
+  return unicos.length===1?unicos[0]:null;
+}
 function mesclar(locais,externos) {
   const itens=[...locais];
   for(const item of externos)if(!itens.some(x=>chave(x.rua)===chave(item.rua)&&(!x.bairro||!item.bairro||chave(x.bairro)===chave(item.bairro))))itens.push(item);
@@ -191,4 +200,4 @@ function registrarAdmin(router) {
     }catch(e){res.status(400).json({erro:e.message || "Não foi possível importar a base."});}
   });
 }
-module.exports={validarBase,lerBase,catalogo,filtrar,chave,resolverLocal,resolverExterno,maisProximo,mesclar,registrarPublico,registrarAdmin};
+module.exports={validarBase,lerBase,catalogo,filtrar,chave,resolverLocal,resolverExterno,validarExterno,maisProximo,mesclar,registrarPublico,registrarAdmin};

@@ -232,6 +232,7 @@ function formatarCep(cep) {
 app.use(cors());
 app.use(express.json({ limit: "3mb" }));
 enderecosGerais.registrarPublico(app, configuracaoEntrega);
+require("./bairros-sugestoes").registrarBairros(app, configuracaoEntrega, (cidade,uf) => enderecosGerais.catalogo(cidade,uf));
 
 const cacheTilesMapa = new Map();
 const LIMITE_CACHE_TILES = 500;
@@ -772,27 +773,10 @@ app.post("/api/pedido/:pedidoId/endereco", async (req, res) => {
         url.searchParams.set("addressdetails", "1");
         localizado = enderecoDoNominatim(await consultarNominatim(url));
       } else {
-        // Endereço digitado também é aceito. Tentamos abreviações e tipos de
-        // logradouro equivalentes antes de pedir que o cliente use o mapa.
-        for (const ruaConsultada of consultasAlternativasDeLogradouro(endereco.rua)) {
-          const url = new URL("https://nominatim.openstreetmap.org/search");
-          url.searchParams.set("q", `${ruaConsultada}, ${endereco.numero || ""}, ${bairro}, ${cidade}, ${estado}, Brasil`);
-          url.searchParams.set("format", "jsonv2");
-          url.searchParams.set("addressdetails", "1");
-          url.searchParams.set("countrycodes", "br");
-          url.searchParams.set("limit", "5");
-          const encontrados = await consultarNominatim(url);
-          const candidato = encontrados.map(enderecoDoNominatim).find(item =>
-            enderecoNaArea(item, configEntrega) &&
-            Number.isFinite(item.latitude) && Number.isFinite(item.longitude)
-          );
-          if (!candidato) continue;
-          localizado = candidato;
-          latitudeEntrega = localizado.latitude;
-          longitudeEntrega = localizado.longitude;
-          break;
-        }
-        if (!localizado) throw new Error("Não encontrei esse endereço no mapa. Confira Rua/Avenida, bairro, cidade e número ou use sua localização.");
+        localizado = await enderecosGerais.validarExterno(expandirAbreviacoesEndereco(endereco.rua), bairro, cidade, estado, cep, configEntrega);
+        if (!localizado) throw new Error("Não foi possível validar a rua e o bairro/localidade na base local ou no Geoapify. Confira os dados ou selecione uma sugestão.");
+        latitudeEntrega = localizado.latitude;
+        longitudeEntrega = localizado.longitude;
       }
       if (!enderecoNaArea(localizado, configEntrega)) {
         throw new Error(`O endereço está fora de ${configEntrega.cidadeAtendida} - ${configEntrega.estadoAtendido}.`);
@@ -821,6 +805,7 @@ app.post("/api/pedido/:pedidoId/endereco", async (req, res) => {
       ? (tipoResidencia === "casa" ? "Casa" : "Apartamento")
       : "Não se aplica",
     referencia: String(endereco.referencia || "Sem referência").trim(),
+    observacaoEntrega: modalidade === "entrega" ? String(endereco.observacaoEntrega || "").trim().slice(0,500) : "",
     cidade: modalidade === "entrega" ? cidade : configEntrega.cidadeAtendida,
     estado: modalidade === "entrega" ? estado : configEntrega.estadoAtendido,
     cep: modalidade === "entrega" ? formatarCep(cep) : "Não se aplica",

@@ -4,6 +4,17 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
+test("validação externa manual exige rua, bairro, cidade, UF e CEP compatíveis",async()=>{
+  const {modulo:m}=ambiente();
+  const item={rua:"Rua Nova",bairro:"Centro",cidade:"Aracaju",uf:"SE",cep:"49000000",latitude:-10.91,longitude:-37.07};
+  const validar=itens=>m.validarExterno("r nova","CENTRO","Aracaju","SE","49000-000",{},async()=>itens);
+  assert.equal(await validar([item]),item);
+  for(const mudanca of [{rua:"Rua Nova Dois"},{bairro:"Outro"},{cidade:"Estância"},{uf:"BA"},{cep:"49200000"},{latitude:100}])
+    assert.equal(await validar([{...item,...mudanca}]),null);
+  assert.equal(await validar([item,{...item,longitude:-37.09}]),null);
+  assert.equal(await validar([]),null);
+});
+
 test("busca ao mudar de campo tenta sem resultados e termina em um minuto", () => {
   const fonte=fs.readFileSync(path.join(__dirname,"public/checkout.js"),"utf8");
   const nomes=["encerrarBuscaPersistente","tentarSugestaoPersistente","manterPrimeiraSugestaoAoSair"];
